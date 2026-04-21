@@ -69,7 +69,6 @@ refactor: APIクライアント整理
 
 #### Pull Request
 - 必ず **1人以上レビュー必須**
-- UI変更は **スクショ添付**
 - 小さく出す（1PR = 1機能）
 
 ---
@@ -144,7 +143,7 @@ cp .env.example .env
    docker-compose down
    docker-compose up -d --build
    ```
-   
+
 ### ❓ なぜ `--build` が必要なの？
 
 `git pull` を実行してコード（`package.json` や `requirements.txt` など）が新しくなっても、起動中のコンテナ内にある環境は古いままだからです。
