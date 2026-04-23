@@ -8,18 +8,38 @@ import { signInWithEmailAndPassword } from "firebase/auth";
 export default function LoginPage() {
   const router = useRouter();
 
-  //  状態管理
+  // 状態管理（メールアドレス・パスワード・ローディング状態）
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  //  ログイン処理
+  // ログイン処理
   const handleLogin = async () => {
+    // 入力チェック
+    if (!email || !password) {
+      alert("メールアドレスとパスワードを入力してください");
+      return;
+    }
+
     try {
+      // ローディング開始
+      setLoading(true);
+
+      // Firebase認証でログイン
       await signInWithEmailAndPassword(auth, email, password);
+
+      // ログイン状態をローカルストレージに保存（ログイン判定用）
+      localStorage.setItem("login", "true");
+
+      // ログイン成功後、ダッシュボードへ遷移
       router.push("/");
     } catch (error) {
+      // エラー時の処理
       alert("ログインに失敗しました");
       console.error(error);
+    } finally {
+      // ローディング終了
+      setLoading(false);
     }
   };
 
@@ -59,9 +79,10 @@ export default function LoginPage() {
           />
         </div>
 
-        {/* 🔘 ログインボタン */}
+        {/* ログインボタン */}
         <button
           onClick={handleLogin}
+          disabled={loading}
           className="
             w-full py-3 rounded-xl text-sm font-semibold text-white
             bg-gradient-to-r from-sky-400 to-pink-400
@@ -69,9 +90,10 @@ export default function LoginPage() {
             transition-all duration-200
             hover:scale-105 hover:shadow-lg
             active:scale-95
+            disabled:opacity-50 disabled:cursor-not-allowed
           "
         >
-          ログイン
+          {loading ? "ログイン中..." : "ログイン"}
         </button>
 
       </div>
