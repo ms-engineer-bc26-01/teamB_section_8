@@ -78,3 +78,9 @@ dist/
 # =========================
 .DS_Store
 Thumbs.db
+
+# =========================
+# Firebase Secret
+# =========================
+serviceAccountKey.json
+
