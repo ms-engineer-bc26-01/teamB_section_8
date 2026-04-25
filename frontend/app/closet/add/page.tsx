@@ -6,15 +6,20 @@ import { useRouter } from "next/navigation";
 export default function AddClothesPage() {
   const router = useRouter();
 
-  // 入力状態
   const [name, setName] = useState("");
   const [category, setCategory] = useState("トップス");
   const [image, setImage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  // 画像アップロード（Base64で保存）
+  // 画像アップロード（サイズ制限あり）
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      alert("画像は2MB以下にしてください");
+      return;
+    }
 
     const reader = new FileReader();
 
@@ -26,15 +31,20 @@ export default function AddClothesPage() {
     reader.readAsDataURL(file);
   };
 
-  // 保存処理
+  // 保存処理（エラーハンドリング付き）
   const handleSave = () => {
-    if (!name) {
-      alert("名前を入力してください");
-      return;
-    }
+    if (!name || loading) return;
 
-    const stored = localStorage.getItem("clothes");
-    const clothes = stored ? JSON.parse(stored) : [];
+    setLoading(true);
+
+    let clothes = [];
+
+    try {
+      const stored = localStorage.getItem("clothes");
+      clothes = stored ? JSON.parse(stored) : [];
+    } catch {
+      localStorage.removeItem("clothes");
+    }
 
     const newItem = {
       id: Date.now(),
@@ -46,19 +56,18 @@ export default function AddClothesPage() {
     const updated = [newItem, ...clothes];
     localStorage.setItem("clothes", JSON.stringify(updated));
 
-    router.push("/closet");
+    setTimeout(() => {
+      router.push("/closet");
+    }, 300);
   };
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-gradient-to-b from-sky-100 to-pink-100">
 
-      {/* スマホ風 */}
       <div className="w-[360px] h-[640px] bg-white rounded-[40px] shadow-xl p-6 flex flex-col justify-between">
 
-        {/* 上部 */}
         <div>
 
-          {/* タイトル */}
           <div className="text-center mb-6">
             <h1 className="text-xl font-bold">➕ 服を追加</h1>
             <p className="text-sm text-gray-500">
@@ -66,16 +75,14 @@ export default function AddClothesPage() {
             </p>
           </div>
 
-          {/* フォーム */}
           <div className="space-y-4">
 
-            {/* 画像アップロード */}
+            {/* 画像 */}
             <label className="block">
               <div className="
                 w-full h-32 bg-gray-100 rounded-xl
                 flex items-center justify-center
-                cursor-pointer overflow-hidden
-                shadow-inner
+                cursor-pointer overflow-hidden shadow-inner
                 transition-all duration-200 ease-out
                 hover:scale-[1.02] hover:shadow-md
               ">
@@ -87,7 +94,7 @@ export default function AddClothesPage() {
                   />
                 ) : (
                   <span className="text-gray-400">
-                    📷 画像を追加
+                    📷 画像を追加（タップ）
                   </span>
                 )}
               </div>
@@ -108,9 +115,7 @@ export default function AddClothesPage() {
               onChange={(e) => setName(e.target.value)}
               className="
                 w-full p-3 rounded-xl bg-gray-100
-                focus:outline-none
-                focus:ring-2 focus:ring-sky-300
-                transition-all duration-200
+                focus:outline-none focus:ring-2 focus:ring-sky-300
               "
             />
 
@@ -120,9 +125,7 @@ export default function AddClothesPage() {
               onChange={(e) => setCategory(e.target.value)}
               className="
                 w-full p-3 rounded-xl bg-gray-100
-                focus:outline-none
-                focus:ring-2 focus:ring-pink-300
-                transition-all duration-200
+                focus:outline-none focus:ring-2 focus:ring-pink-300
               "
             >
               <option>トップス</option>
@@ -138,32 +141,28 @@ export default function AddClothesPage() {
         {/* ボタン */}
         <div className="flex gap-3">
 
-          {/* 戻る */}
           <button
             onClick={() => router.back()}
             className="
-              flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl
-              transition-all duration-200 ease-out
-              hover:bg-gray-200 hover:-translate-y-0.5
-              active:scale-95
+              flex-1 bg-gray-100 py-3 rounded-xl
+              hover:bg-gray-200 active:scale-95
             "
           >
             戻る
           </button>
 
-          {/* 保存 */}
           <button
             onClick={handleSave}
+            disabled={loading}
             className="
               flex-1
               bg-gradient-to-r from-sky-400 to-pink-400 text-white
               py-3 rounded-xl shadow-md
-              transition-all duration-200 ease-out
-              hover:shadow-lg hover:-translate-y-0.5
-              active:scale-95
+              hover:shadow-lg active:scale-95
+              disabled:opacity-50
             "
           >
-            保存
+            {loading ? "保存中..." : "保存"}
           </button>
 
         </div>
