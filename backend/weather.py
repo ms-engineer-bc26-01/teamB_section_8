@@ -109,9 +109,9 @@ async def fetch_weather_by_zip(zip_code: str) -> dict[str, Any]:
 		forecast_json = forecast_response.json()
 
 		current = {
-            "temp": f"{round(current_json['main']['temp'])}℃",  # 気温
-            "feels_like": f"{round(current_json['main']['feels_like'])}℃",  # 体感
-            "humidity": f"{current_json['main']['humidity']}%",  # 湿度
+            "temp": round(current_json['main']['temp']),  # 気温
+            "feels_like": round(current_json['main']['feels_like']),  # 体感
+            "humidity": current_json['main']['humidity'],  # 湿度
             "weather": WEATHER_MAIN_JA.get(current_json["weather"][0]["main"], current_json["weather"][0]["main"]),  # 天気
             "description": current_json["weather"][0]["description"],  # 説明
              # "wind_speed": current_json["wind"]["speed"],  # 風速
@@ -120,9 +120,9 @@ async def fetch_weather_by_zip(zip_code: str) -> dict[str, Any]:
 		forecast = [
             {
                 "datetime": item["dt_txt"],  # 日時
-                "temp": f"{round(item['main']['temp'])}℃",  # 気温
+                "temp": round(item['main']['temp']),  # 気温
                 "weather": WEATHER_MAIN_JA.get(item["weather"][0]["main"], item["weather"][0]["main"]),  # 天気
-                "pop": f"{round(item.get('pop', 0) * 100)}%",  # 降水確率（存在しない場合は0）
+                "pop": round(item.get('pop', 0) * 100),  # 降水確率（存在しない場合は0）
             }
             for item in forecast_json["list"]
 		]

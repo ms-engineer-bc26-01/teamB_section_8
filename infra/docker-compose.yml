@@ -10,6 +10,7 @@ services:
       - "8000:8000"
     environment:
       - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}
+      - APP_ENV=${APP_ENV}
     depends_on:
       - db
 
