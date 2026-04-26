@@ -28,6 +28,12 @@ python3 -m venv .venv
 source .venv/bin/activate
 ```
 
+- Windowsの場合は
+```PowerShell
+.venv\Scripts\Activate
+```
+→　(.venu)が行の頭に表示される。
+
 ### 1-4. 依存パッケージをインストール
 
 ```bash
