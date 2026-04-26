@@ -2,12 +2,13 @@
 import os
 
 # サードパーティ
-from fastapi import FastAPI, Depends, HTTPException, Header
+from fastapi import FastAPI, Depends, HTTPException, Header, Query
 import firebase_admin
 from firebase_admin import credentials, auth
 from pydantic import BaseModel
 
 # 自作モジュール
+from weather import fetch_weather_by_zip
 from app.schemas.recommend import RecommendRequest
 from app.services.outfit import generate_outfit
 from app.services.llm import generate_response
@@ -69,4 +70,8 @@ def auth_test(user=Depends(get_current_user)):
 
 @app.get("/")
 def read_root():
-    return {"message": "Hello World"}
+	return {"message": "Hello World"}
+
+@app.get("/weather")
+async def get_weather(zip_code: str = Query(..., description="郵便番号。例: 1000001")):
+	return await fetch_weather_by_zip(zip_code)
