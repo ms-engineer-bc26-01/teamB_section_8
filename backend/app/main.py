@@ -2,28 +2,25 @@
 import os
 
 # サードパーティ
-from fastapi import FastAPI, Depends, HTTPException, Header, Query
+from fastapi import FastAPI, Query
 import firebase_admin
-from firebase_admin import credentials, auth
+from firebase_admin import credentials
 from pydantic import BaseModel
 
 # 自作モジュール
-from weather import fetch_weather_by_zip
+from app.services.weather import fetch_weather_by_zip
 from app.schemas.recommend import RecommendRequest
 from app.services.outfit import generate_outfit
 from app.services.llm import generate_response
+from app.routers import item as item_router
+from app.routers import outfit as outfit_router
+from app.dependencies import IS_DEV_ENV
 
 app = FastAPI()
 
-# 開発環境判定
-def is_development_environment() -> bool:
-    env = (
-        os.getenv("APP_ENV") or ""
-    ).lower()
-    return env in {"dev", "development", "local"}
-
-
-IS_DEV_ENV = is_development_environment()
+# ルーターのインクルード
+app.include_router(item_router.router)
+app.include_router(outfit_router.router)
 
 # --- Firebase SDK の初期化 ---
 if IS_DEV_ENV:
@@ -41,25 +38,6 @@ else:
             "Firebase initialization failed. "
             "Set FIREBASE_CONFIG_PATH or run with APP_ENV=development."
         ) from e
-
-# --- 共通の認証処理 (Dependency) --- [cite: 65, 67]
-async def get_current_user(authorization: str = Header(None)):
-    if IS_DEV_ENV:
-        return {
-            "uid": os.getenv("DEV_USER_UID", "dev-user"),
-            "email": os.getenv("DEV_USER_EMAIL", "dev@example.com"),
-        }
-
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid authorization header")
-    
-    token = authorization.split("Bearer ")[1]
-    try:
-        # トークンの検証 
-        decoded_token = auth.verify_id_token(token)
-        return decoded_token # uid 等が含まれる
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}")
 
 
 @app.get("/")
@@ -90,9 +68,3 @@ class ChatRequest(BaseModel):
 def chat(req: ChatRequest):
     reply = generate_response(req.message)
     return {"reply": reply}
-
-
-# --- テスト用エンドポイント --- 
-@app.get("/auth-test")
-def auth_test(user=Depends(get_current_user)):
-    return {"message": "Success!", "uid": user["uid"], "email": user.get("email")}
