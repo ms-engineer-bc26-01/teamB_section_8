@@ -16,175 +16,112 @@ export default function ClosetPage() {
 
   const [clothes, setClothes] = useState<Cloth[]>([]);
 
-  // データ取得（エラーハンドリングあり）
   useEffect(() => {
     try {
       const stored = localStorage.getItem("clothes");
-      if (stored) {
-        setClothes(JSON.parse(stored));
-      }
-    } catch (error) {
-      console.error("データ読み込みエラー", error);
+      if (stored) setClothes(JSON.parse(stored));
+    } catch {
       localStorage.removeItem("clothes");
     }
   }, []);
 
-  // 削除処理
   const handleDelete = (id: number) => {
     if (!confirm("削除してもよろしいですか？")) return;
-
-    const updated = clothes.filter((item) => item.id !== id);
+    const updated = clothes.filter((c) => c.id !== id);
     setClothes(updated);
     localStorage.setItem("clothes", JSON.stringify(updated));
   };
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-gradient-to-b from-sky-100 to-pink-100">
-      
-      <div className="w-[360px] h-[640px] bg-white rounded-[40px] shadow-xl p-4 flex flex-col justify-between">
+      <div className="w-[360px] h-[640px] bg-white rounded-[40px] shadow-xl flex flex-col overflow-hidden">
 
-        {/* 上部 */}
-        <div>
+        {/* ヘッダー */}
+        <div className="h-[56px] flex items-center justify-center border-b border-gray-200 text-base font-semibold text-gray-700">
+          👕 クローゼット
+        </div>
 
-          <div className="text-center mb-4">
-            <h1 className="text-xl font-bold">👕 クローゼット</h1>
-            <p className="text-sm text-gray-500">
-              手持ちの服一覧
-            </p>
-          </div>
+        {/* メイン */}
+        <div className="flex-1 p-3 overflow-y-auto">
+          <div className="grid grid-cols-2 gap-3">
 
-          {/* 🔥 スクロール対応 */}
-          <div className="overflow-y-auto max-h-[420px] pr-1">
+            {clothes.length === 0 && (
+              <div className="col-span-2 text-center text-gray-400 text-sm mt-6">
+                🧺 まだ服がありません
+              </div>
+            )}
 
-            <div className="grid grid-cols-2 gap-3">
-
-              {clothes.length === 0 && (
-                <div className="col-span-2 flex flex-col items-center text-gray-400 text-sm mt-6">
-                  <span className="text-4xl mb-2">🧺</span>
-                  まだ服が登録されていません
-                </div>
-              )}
-
-              {clothes.map((item) => (
-                <div
-                  key={item.id}
-                  onClick={() => router.push(`/closet/${item.id}`)}
-                  className="
-                    relative bg-white rounded-2xl shadow-md p-3 border border-gray-100
-                    transition-all duration-200 ease-out
-                    hover:shadow-lg hover:-translate-y-1 cursor-pointer
-                  "
+            {clothes.map((item) => (
+              <div
+                key={item.id}
+                className="relative bg-white rounded-2xl shadow-md p-3 border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition"
+              >
+                <button
+                  onClick={() => handleDelete(item.id)}
+                  className="absolute top-2 right-2 text-xs bg-gray-200 w-6 h-6 rounded-full hover:bg-red-400 hover:text-white active:scale-90 transition"
                 >
+                  ✕
+                </button>
 
-                  {/* 削除ボタン */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(item.id);
-                    }}
-                    className="
-                      absolute top-2 right-2
-                      w-6 h-6 rounded-full
-                      flex items-center justify-center
-                      text-xs
-                      bg-gray-200 text-gray-600
-                      transition-all duration-200 ease-out
-                      hover:bg-red-400 hover:text-white hover:scale-110
-                      active:scale-90
-                    "
-                  >
-                    ✕
-                  </button>
-
-                  {/* 画像 */}
-                  <div className="w-full h-20 flex items-center justify-center mb-2 bg-gray-50 rounded-xl shadow-inner overflow-hidden">
-                    {item.image ? (
-                      <img
-                        src={item.image}
-                        alt="服"
-                        className="object-cover w-full h-full"
-                      />
-                    ) : (
-                      <span className="text-3xl">👕</span>
-                    )}
-                  </div>
-
-                  {/* 名前 */}
-                  <p className="text-sm font-semibold text-center">
-                    {item.name}
-                  </p>
-
-                  {/* カテゴリ */}
-                  <div className="mt-2 text-center">
-                    <span className="text-xs bg-sky-100 text-sky-600 px-2 py-1 rounded-full">
-                      {item.category}
-                    </span>
-                  </div>
-
+                <div className="w-full h-20 bg-gray-50 rounded-xl mb-2 flex items-center justify-center overflow-hidden">
+                  {item.image ? (
+                    <img src={item.image} className="w-full h-full object-cover" />
+                  ) : (
+                    "👕"
+                  )}
                 </div>
-              ))}
 
-            </div>
+                <p className="text-sm text-center font-semibold">{item.name}</p>
 
+                <div className="text-center mt-1">
+                  <span className="text-xs bg-sky-100 text-sky-600 px-2 py-1 rounded-full">
+                    {item.category}
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
-
         </div>
 
-        {/* 下部 */}
-        <div>
-
-          {/* 追加ボタン */}
-          <div className="flex justify-center mb-3">
-            <button
-              onClick={() => router.push("/closet/add")}
-              className="
-                bg-gradient-to-r from-pink-400 to-pink-500 text-white
-                w-12 h-12 rounded-full shadow-lg text-xl
-                flex items-center justify-center
-                transition-all duration-200 ease-out
-                hover:scale-110 hover:shadow-xl hover:rotate-90
-                active:scale-90
-              "
-            >
-              ＋
-            </button>
-          </div>
-
-          {/* ナビ */}
-          <div className="border-t pt-3 flex justify-around">
-
-            <button
-              onClick={() => router.push("/")}
-              className={`flex flex-col items-center px-4 py-2 rounded-xl
-                ${pathname === "/" ? "bg-sky-100 text-sky-600" : "bg-gray-100 text-gray-600"}`}
-            >
-              🏠
-              <span className="text-xs">ホーム</span>
-            </button>
-
-            <button
-              onClick={() => router.push("/closet")}
-              className={`flex flex-col items-center px-4 py-2 rounded-xl
-                ${pathname === "/closet" ? "bg-sky-100 text-sky-600" : "bg-gray-100 text-gray-600"}`}
-            >
-              👕
-              <span className="text-xs">クローゼット</span>
-            </button>
-
-            <button
-              onClick={() => router.push("/chat")}
-              className={`flex flex-col items-center px-4 py-2 rounded-xl
-                ${pathname === "/chat" ? "bg-sky-100 text-sky-600" : "bg-gray-100 text-gray-600"}`}
-            >
-              💬
-              <span className="text-xs">チャット</span>
-            </button>
-
-          </div>
-
+        {/* ＋ボタン */}
+        <div className="flex justify-center mb-2">
+          <button
+            onClick={() => router.push("/closet/add")}
+            className="w-12 h-12 bg-pink-400 text-white rounded-full text-xl hover:scale-110 active:scale-90 transition"
+          >
+            ＋
+          </button>
         </div>
 
+        <BottomNav pathname={pathname} router={router} />
       </div>
     </main>
+  );
+}
+
+/* ===== 共通ナビ ===== */
+function BottomNav({ pathname, router }: any) {
+  return (
+    <div className="h-[64px] border-t border-gray-200 flex justify-around items-center">
+      <NavBtn icon="🏠" label="ホーム" path="/" {...{ pathname, router }} />
+      <NavBtn icon="👕" label="クローゼット" path="/closet" {...{ pathname, router }} />
+      <NavBtn icon="💬" label="チャット" path="/chat" {...{ pathname, router }} />
+    </div>
+  );
+}
+
+function NavBtn({ icon, label, path, pathname, router }: any) {
+  const active = pathname === path;
+
+  return (
+    <button
+      onClick={() => router.push(path)}
+      className={`flex flex-col items-center text-xs px-3 py-2 rounded-xl transition ${
+        active ? "bg-sky-100 text-sky-600" : "text-gray-400"
+      } hover:bg-gray-100 active:scale-90`}
+    >
+      <span className="text-lg">{icon}</span>
+      {label}
+    </button>
   );
 }
