@@ -1,6 +1,10 @@
 # 標準ライブラリ
 import os
 
+# load .env
+from dotenv import load_dotenv
+load_dotenv()
+
 # サードパーティ
 from fastapi import FastAPI, Query
 import firebase_admin
