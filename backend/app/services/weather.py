@@ -35,7 +35,7 @@ WEATHER_MAIN_JA: dict[str, str] = {
 
 async def fetch_weather_by_zip(zip_code: str) -> dict[str, Any]:
 	if not OPENWEATHER_API_KEY:
-		raise HTTPException(status_code=500, detail="OPENWEATHER_API_KEY is not set")
+		raise HTTPException(status_code=503, detail="OPENWEATHER_API_KEY is not set. Please configure the environment variable.")
 
 	zip_query = f"{zip_code},{OPENWEATHER_COUNTRY_CODE}"
 

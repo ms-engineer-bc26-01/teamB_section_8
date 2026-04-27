@@ -92,7 +92,29 @@ pip install -r requirements.txt
 
 ## 4. よく使うコマンド
 
-## 5. 起動時シード（開発環境のみ）
+## 5. 環境変数の設定
+
+`.env.example` をコピーして `.env` を作成し、各自の値を設定してください。
+
+```bash
+cp .env.example .env
+```
+
+### OpenWeatherMap API キー
+
+天気情報取得機能 (`GET /weather`) を使用するには `OPENWEATHER_API_KEY` が必要です。
+
+1. [https://openweathermap.org/api](https://openweathermap.org/api) にアクセスし、無料アカウントを作成します
+2. ダッシュボードの「API keys」タブからデフォルトキーをコピーします
+3. `.env` に以下を設定します:
+
+```
+OPENWEATHER_API_KEY=your_api_key_here
+```
+
+> **注意**: API キーが未設定の場合、`/weather` エンドポイントは `503 Service Unavailable` を返します。
+
+## 6. 起動時シード（開発環境のみ）
 
 `scripts/entrypoint.sh` は、起動時に以下の順で実行されます。
 

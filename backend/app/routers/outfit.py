@@ -1,47 +1,12 @@
 from uuid import UUID
-import uuid as _uuid
-import os
 
-from fastapi import APIRouter, Depends, Header, HTTPException
-from firebase_admin import auth
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db import get_db
+from app.dependencies import get_current_user, uid_to_uuid
 from app.schemas.outfit import OutfitCreate, OutfitUpdate, OutfitResponse
 from app.services import outfit as outfit_service
-
-
-def is_development_environment() -> bool:
-    env = (
-        os.getenv("APP_ENV") or ""
-    ).lower()
-    return env in {"dev", "development", "local"}
-
-
-IS_DEV_ENV = is_development_environment()
-
-
-def uid_to_uuid(uid: str) -> UUID:
-    """Firebase UID など任意の文字列を決定論的に UUID へ変換する"""
-    return _uuid.uuid5(_uuid.NAMESPACE_URL, uid)
-
-
-async def get_current_user(authorization: str = Header(None)):
-    if IS_DEV_ENV:
-        return {
-            "uid": os.getenv("DEV_USER_UID", "dev-user"),
-            "email": os.getenv("DEV_USER_EMAIL", "dev@example.com"),
-        }
-
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid authorization header")
-
-    token = authorization.split("Bearer ")[1]
-    try:
-        decoded_token = auth.verify_id_token(token)
-        return decoded_token
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}")
 
 
 router = APIRouter(prefix="/outfits", tags=["outfits"])

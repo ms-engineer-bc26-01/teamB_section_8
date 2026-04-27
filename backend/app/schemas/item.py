@@ -1,13 +1,32 @@
+from enum import Enum
+
 from pydantic import BaseModel
 from datetime import datetime
 from uuid import UUID
 
 
+class CategoryEnum(str, Enum):
+    tops = "tops"
+    bottoms = "bottoms"
+    outerwear = "outerwear"
+    shoes = "shoes"
+    accessories = "accessories"
+    other = "other"
+
+
+class SeasonEnum(str, Enum):
+    spring = "spring"
+    summer = "summer"
+    autumn = "autumn"
+    winter = "winter"
+    all_season = "all_season"
+
+
 class ItemBase(BaseModel):
     name: str
-    category: str
+    category: CategoryEnum
     color: str
-    season: str
+    season: SeasonEnum
     image_url: str | None = None
 
 
@@ -17,9 +36,9 @@ class ItemCreate(ItemBase):
 
 class ItemUpdate(BaseModel):
     name: str | None = None
-    category: str | None = None
+    category: CategoryEnum | None = None
     color: str | None = None
-    season: str | None = None
+    season: SeasonEnum | None = None
     image_url: str | None = None
 
 
