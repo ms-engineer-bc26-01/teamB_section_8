@@ -20,17 +20,8 @@ app = FastAPI()
 
 # ルーター登録（循環インポート回避のため初期化後に import）
 from app.routers import auth as auth_router  # noqa: E402
-from app.routers import users as users_router  # noqa: E402
 
 app.include_router(auth_router.router)
-app.include_router(users_router.router)
-
-# 開発環境判定
-def is_development_environment() -> bool:
-    env = (
-        os.getenv("APP_ENV") or ""
-    ).lower()
-    return env in {"dev", "development", "local"}
 
 # ルーターのインクルード
 app.include_router(item_router.router)
