@@ -1,6 +1,19 @@
 version: "3.9"
 
 services:
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: backend
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}
+      - APP_ENV=${APP_ENV}
+    depends_on:
+      - db
+
   db:
     image: pgvector/pgvector:pg15
     container_name: postgres_db
@@ -15,4 +28,3 @@ services:
 
 volumes:
   db_data:
-  
