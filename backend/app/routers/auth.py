@@ -22,9 +22,15 @@ async def signup(req: SignupRequest, db: Session = Depends(get_db)):
     if IS_DEV_ENV and ALLOW_DEV_AUTH_BYPASS:
         dev_uid = os.getenv("DEV_USER_UID", "dev-user")
         user_id = uid_to_uuid(dev_uid)
-        existing = db.query(User).filter(User.email == req.email).first()
-        if existing:
+        existing_by_email = db.query(User).filter(User.email == req.email).first()
+        if existing_by_email:
             raise HTTPException(status_code=400, detail="Email already exists")
+        existing_by_id = db.query(User).filter(User.id == user_id).first()
+        if existing_by_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Dev user already registered. Change DEV_USER_UID to register a different dev user.",
+            )
         db_user = User(id=user_id, email=req.email)
         db.add(db_user)
         db.commit()

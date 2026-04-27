@@ -16,7 +16,7 @@ services:
       - FIREBASE_WEB_API_KEY=${FIREBASE_WEB_API_KEY}
       - DEV_USER_UID=${DEV_USER_UID:-dev-user}
       - DEV_USER_EMAIL=${DEV_USER_EMAIL:-dev@example.com}
-      - ALLOW_DEV_AUTH_BYPASS=${ALLOW_DEV_AUTH_BYPASS:-true}
+      - ALLOW_DEV_AUTH_BYPASS=${ALLOW_DEV_AUTH_BYPASS:-false}
     depends_on:
       db:
         condition: service_healthy
