@@ -1,5 +1,6 @@
 # 標準ライブラリ
 import os
+import uuid as _uuid
 
 # サードパーティ
 from uuid import UUID
@@ -10,17 +11,19 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 # 自作モジュール
-from weather import fetch_weather_by_zip
+from app.services.weather import fetch_weather_by_zip
 from app.db import get_db
 from app.schemas.recommend import RecommendRequest
-from app.schemas.item import ItemCreate, ItemUpdate, ItemResponse
 from app.schemas.outfit import OutfitCreate, OutfitUpdate, OutfitResponse
 from app.services.outfit import generate_outfit
 from app.services.llm import generate_response
-from app.services import item as item_service
 from app.services import outfit as outfit_service
+from app.routers import item as item_router
 
 app = FastAPI()
+
+# ルーターのインクルード
+app.include_router(item_router.router)
 
 # 開発環境判定
 def is_development_environment() -> bool:
@@ -69,6 +72,11 @@ async def get_current_user(authorization: str = Header(None)):
         raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}")
 
 
+def uid_to_uuid(uid: str) -> UUID:
+    """Firebase UID など任意の文字列を決定論的に UUID へ変換する"""
+    return _uuid.uuid5(_uuid.NAMESPACE_URL, uid)
+
+
 @app.get("/")
 def root():
     return {"message": "API is running"}
@@ -97,94 +105,6 @@ class ChatRequest(BaseModel):
 def chat(req: ChatRequest):
     reply = generate_response(req.message)
     return {"reply": reply}
-# --- Item CRUD エンドポイント ---
-@app.post("/items", response_model=ItemResponse)
-def create_item(
-    item: ItemCreate,
-    user=Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """アイテムを作成"""
-    user_id = UUID(user["uid"])
-    created_item = item_service.create_item(
-        db,
-        user_id=user_id,
-        name=item.name,
-        category=item.category,
-        color=item.color,
-        season=item.season,
-        image_url=item.image_url
-    )
-    return created_item
-
-
-@app.get("/items/{item_id}", response_model=ItemResponse)
-def read_item(
-    item_id: UUID,
-    user=Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """アイテムを取得"""
-    item = item_service.get_item(db, item_id)
-    if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
-    if str(item.user_id) != user["uid"]:
-        raise HTTPException(status_code=403, detail="Forbidden")
-    return item
-
-
-@app.get("/items", response_model=list[ItemResponse])
-def list_items(
-    user=Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """ユーザーの全アイテムを取得"""
-    user_id = UUID(user["uid"])
-    return item_service.get_user_items(db, user_id)
-
-
-@app.put("/items/{item_id}", response_model=ItemResponse)
-def update_item(
-    item_id: UUID,
-    item_update: ItemUpdate,
-    user=Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """アイテムを更新"""
-    item = item_service.get_item(db, item_id)
-    if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
-    if str(item.user_id) != user["uid"]:
-        raise HTTPException(status_code=403, detail="Forbidden")
-    
-    updated_item = item_service.update_item(
-        db,
-        item_id,
-        name=item_update.name,
-        category=item_update.category,
-        color=item_update.color,
-        season=item_update.season
-    )
-    return updated_item
-
-
-@app.delete("/items/{item_id}")
-def delete_item(
-    item_id: UUID,
-    user=Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """アイテムを削除"""
-    item = item_service.get_item(db, item_id)
-    if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
-    if str(item.user_id) != user["uid"]:
-        raise HTTPException(status_code=403, detail="Forbidden")
-    
-    item_service.delete_item(db, item_id)
-    return {"message": "Item deleted"}
-
-
 # --- Outfit CRUD エンドポイント ---
 @app.post("/outfits", response_model=OutfitResponse)
 def create_outfit(
@@ -193,7 +113,7 @@ def create_outfit(
     db: Session = Depends(get_db)
 ):
     """コーディネートを作成"""
-    user_id = UUID(user["uid"])
+    user_id = uid_to_uuid(user["uid"])
     created_outfit = outfit_service.create_outfit(
         db,
         user_id=user_id,
@@ -214,7 +134,7 @@ def read_outfit(
     outfit = outfit_service.get_outfit(db, outfit_id)
     if not outfit:
         raise HTTPException(status_code=404, detail="Outfit not found")
-    if str(outfit.user_id) != user["uid"]:
+    if outfit.user_id != uid_to_uuid(user["uid"]):
         raise HTTPException(status_code=403, detail="Forbidden")
     return outfit
 
@@ -225,7 +145,7 @@ def list_outfits(
     db: Session = Depends(get_db)
 ):
     """ユーザーの全コーディネートを取得"""
-    user_id = UUID(user["uid"])
+    user_id = uid_to_uuid(user["uid"])
     return outfit_service.get_user_outfits(db, user_id)
 
 
@@ -240,7 +160,7 @@ def update_outfit(
     outfit = outfit_service.get_outfit(db, outfit_id)
     if not outfit:
         raise HTTPException(status_code=404, detail="Outfit not found")
-    if str(outfit.user_id) != user["uid"]:
+    if outfit.user_id != uid_to_uuid(user["uid"]):
         raise HTTPException(status_code=403, detail="Forbidden")
     
     updated_outfit = outfit_service.update_outfit(
@@ -263,7 +183,7 @@ def delete_outfit(
     outfit = outfit_service.get_outfit(db, outfit_id)
     if not outfit:
         raise HTTPException(status_code=404, detail="Outfit not found")
-    if str(outfit.user_id) != user["uid"]:
+    if outfit.user_id != uid_to_uuid(user["uid"]):
         raise HTTPException(status_code=403, detail="Forbidden")
     
     outfit_service.delete_outfit(db, outfit_id)
