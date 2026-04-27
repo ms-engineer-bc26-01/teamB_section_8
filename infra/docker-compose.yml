@@ -13,6 +13,7 @@ services:
       - DB_NAME=closet_db
       - OPENWEATHER_API_KEY=${OPENWEATHER_API_KEY}
       - APP_ENV=${APP_ENV}
+      - FIREBASE_WEB_API_KEY=${FIREBASE_WEB_API_KEY}
       - DEV_USER_UID=${DEV_USER_UID:-dev-user}
       - DEV_USER_EMAIL=${DEV_USER_EMAIL:-dev@example.com}
     depends_on:
