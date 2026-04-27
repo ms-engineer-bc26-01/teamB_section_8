@@ -1,11 +1,16 @@
+# 標準ライブラリ
 import os
+
+# サードパーティ
 from fastapi import FastAPI, Depends, HTTPException, Header
 import firebase_admin
 from firebase_admin import credentials, auth
+from pydantic import BaseModel
 
-from fastapi import FastAPI
+# 自作モジュール
 from app.schemas.recommend import RecommendRequest
 from app.services.outfit import generate_outfit
+from app.services.llm import generate_response
 
 app = FastAPI()
 
@@ -47,6 +52,14 @@ def recommend(req: RecommendRequest):
     }
 
 
+# --- チャットAPIエンドポイント ---
+class ChatRequest(BaseModel):
+    message: str
+
+@app.post("/chat")
+def chat(req: ChatRequest):
+    reply = generate_response(req.message)
+    return {"reply": reply}
 
 
 # --- テスト用エンドポイント --- 
