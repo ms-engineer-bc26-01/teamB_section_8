@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # サードパーティ
-from fastapi import FastAPI, Query
+from fastapi import Depends, FastAPI, Query
 import firebase_admin
 from firebase_admin import credentials
 from pydantic import BaseModel
@@ -18,7 +18,7 @@ from app.services.outfit import generate_outfit
 from app.services.llm import generate_response
 from app.routers import item as item_router
 from app.routers import outfit as outfit_router
-from app.dependencies import IS_DEV_ENV
+from app.dependencies import IS_DEV_ENV, get_current_user
 
 app = FastAPI()
 
@@ -57,7 +57,7 @@ def root():
 
 # --- コーディネート提案APIエンドポイント ---
 @app.post("/recommend")
-def recommend(req: RecommendRequest):
+def recommend(req: RecommendRequest, user=Depends(get_current_user)):
     outfit = generate_outfit(req.temperature, req.weather)
 
     return {
@@ -68,7 +68,7 @@ def recommend(req: RecommendRequest):
 
 # --- 天気情報取得APIエンドポイント ---
 @app.get("/weather")
-async def get_weather(zip_code: str = Query(..., description="郵便番号。例: 1000001")):
+async def get_weather(zip_code: str = Query(..., description="郵便番号。例: 1000001"), user=Depends(get_current_user)):
 	return await fetch_weather_by_zip(zip_code)
 
 # --- チャットAPIエンドポイント ---
@@ -76,6 +76,6 @@ class ChatRequest(BaseModel):
     message: str
 
 @app.post("/chat")
-def chat(req: ChatRequest):
+def chat(req: ChatRequest, user=Depends(get_current_user)):
     reply = generate_response(req.message)
     return {"reply": reply}
