@@ -1,4 +1,5 @@
 # 標準ライブラリ
+import logging
 import os
 
 # load .env
@@ -6,7 +7,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # サードパーティ
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 import firebase_admin
 from firebase_admin import credentials
 from pydantic import BaseModel
@@ -21,6 +24,36 @@ from app.routers import outfit as outfit_router
 from app.dependencies import IS_DEV_ENV
 
 app = FastAPI()
+
+logger = logging.getLogger(__name__)
+
+cors_allow_origins = os.getenv("CORS_ALLOW_ORIGINS", "*").split(",")
+cors_allow_origins = [origin.strip() for origin in cors_allow_origins if origin.strip()]
+allow_all_origins = "*" in cors_allow_origins
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_allow_origins or ["*"],
+    allow_credentials=not allow_all_origins,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.exception(
+        "Unhandled exception: %s %s",
+        request.method,
+        request.url.path,
+    )
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "Internal Server Error",
+            "error": str(exc),
+        },
+    )
 
 # ルーター登録（循環インポート回避のため初期化後に import）
 from app.routers import auth as auth_router  # noqa: E402
