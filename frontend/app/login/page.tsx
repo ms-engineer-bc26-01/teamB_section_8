@@ -8,59 +8,60 @@ import { signInWithEmailAndPassword } from "firebase/auth";
 export default function LoginPage() {
   const router = useRouter();
 
-  // 状態管理（メールアドレス・パスワード・ローディング状態）
+  // 状態管理
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   // ログイン処理
   const handleLogin = async () => {
-    // 入力チェック
     if (!email || !password) {
       alert("メールアドレスとパスワードを入力してください");
       return;
     }
 
     try {
-      // ローディング開始
       setLoading(true);
 
-      // Firebase認証でログイン
-      await signInWithEmailAndPassword(auth, email, password);
+      // 1. Firebase認証でログイン
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
 
-      // ログイン状態をローカルストレージに保存（ログイン判定用）
+      /**
+       * 2. 重要：FirebaseからIDトークンを取得
+       * バックエンド（FastAPI）の認証でこのトークンが必要になります。
+       */
+      const token = await user.getIdToken();
+
+      /**
+       * 3. トークンとログイン状態を保存
+       * 以后 apiClient 会自动从这里读取 token 并发送给后端
+       */
+      localStorage.setItem("token", token);
       localStorage.setItem("login", "true");
 
-      // ログイン成功後、ダッシュボードへ遷移
+      console.log("ログイン成功、トークンを保存しました");
+
+      // 4. ダッシュボードへ遷移
       router.push("/");
-    } catch (error) {
-      // エラー時の処理
-      alert("ログインに失敗しました");
-      console.error(error);
+    } catch (error: any) {
+      alert("ログインに失敗しました。パスワードを確認してください。");
+      console.error("Login Error:", error.message);
     } finally {
-      // ローディング終了
       setLoading(false);
     }
   };
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-gradient-to-b from-sky-100 to-pink-100">
-      
-      {/* スマホ風コンテナ */}
       <div className="w-[360px] h-[640px] bg-white rounded-[40px] shadow-xl p-6 flex flex-col justify-center space-y-6">
         
-        {/* タイトルエリア */}
         <div className="text-center space-y-2">
-          <h1 className="text-2xl font-bold">Climo ☁️</h1>
-          <p className="text-sm text-gray-500">
-            ログインしてください
-          </p>
+          <h1 className="text-2xl font-bold font-japanese text-gray-800">Climo ☁️</h1>
+          <p className="text-sm text-gray-500 font-japanese">ログインしてください</p>
         </div>
 
-        {/* 入力フォーム */}
         <div className="space-y-4">
-          
-          {/* メールアドレス入力 */}
           <input
             type="email"
             placeholder="メールアドレス"
@@ -69,7 +70,6 @@ export default function LoginPage() {
             className="w-full p-3 rounded-xl bg-gray-100 focus:outline-none focus:ring-2 focus:ring-sky-300 transition"
           />
 
-          {/* パスワード入力 */}
           <input
             type="password"
             placeholder="パスワード"
@@ -79,23 +79,17 @@ export default function LoginPage() {
           />
         </div>
 
-        {/* ログインボタン */}
         <button
           onClick={handleLogin}
           disabled={loading}
           className="
             w-full py-3 rounded-xl text-sm font-semibold text-white
-            bg-gradient-to-r from-sky-400 to-pink-400
-            shadow-md
-            transition-all duration-200
-            hover:scale-105 hover:shadow-lg
-            active:scale-95
-            disabled:opacity-50 disabled:cursor-not-allowed
+            bg-gradient-to-r from-sky-400 to-pink-400 shadow-md
+            transition-all hover:scale-105 active:scale-95 disabled:opacity-50
           "
         >
           {loading ? "ログイン中..." : "ログイン"}
         </button>
-
       </div>
     </main>
   );
