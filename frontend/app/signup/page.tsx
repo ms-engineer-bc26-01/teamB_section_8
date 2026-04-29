@@ -3,18 +3,18 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { auth } from "@/lib/firebase";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 
-export default function LoginPage() {
+export default function SignUpPage() {
   const router = useRouter();
 
-  // 状態管理
+  // 状態管理（ユーザー名を削除）
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // ログイン処理
-  const handleLogin = async () => {
+  // サインアップ処理
+  const handleSignUp = async () => {
     if (!email || !password) {
       alert("メールアドレスとパスワードを入力してください");
       return;
@@ -23,40 +23,44 @@ export default function LoginPage() {
     try {
       setLoading(true);
 
-      // 1. Firebase認証でログイン
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      // 1. Firebase認証で新規ユーザー作成
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
       /**
-       * 2. 重要：FirebaseからIDトークンを取得
+       * 2. トークンの取得と保存
+       * ログイン後と同様にトークンを保存して、API接続を可能にします
        */
       const token = await user.getIdToken();
-
-      /**
-       * 3. トークンとログイン状態を保存
-       */
       localStorage.setItem("token", token);
       localStorage.setItem("login", "true");
 
-      console.log("ログイン成功、トークンを保存しました");
+      alert("アカウントが作成されました！");
+      console.log("サインアップ成功、トークンを保存しました");
 
-      // 4. ダッシュボードへ遷移
+      // 3. ダッシュボード（ホーム）へ遷移
       router.push("/");
     } catch (error: any) {
-      alert("ログインに失敗しました。パスワードを確認してください。");
-      console.error("Login Error:", error.message);
+      if (error.code === 'auth/email-already-in-use') {
+        alert("このメールアドレスは既に登録されています。");
+      } else if (error.code === 'auth/weak-password') {
+        alert("パスワードが短すぎます（6文字以上必要です）。");
+      } else {
+        alert("アカウント作成に失敗しました。");
+      }
+      console.error("SignUp Error:", error.message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gradient-to-b from-sky-100 to-pink-100 font-japanese">
+    <main className="min-h-screen flex items-center justify-center bg-gradient-to-b from-sky-100 to-pink-100">
       <div className="w-[360px] h-[640px] bg-white rounded-[40px] shadow-xl p-6 flex flex-col justify-center space-y-6">
         
         <div className="text-center space-y-2">
-          <h1 className="text-2xl font-bold text-gray-800">Climo ☁️</h1>
-          <p className="text-sm text-gray-500">ログインしてください</p>
+          <h1 className="text-2xl font-bold font-japanese text-gray-800">Climo ☁️</h1>
+          <p className="text-sm text-gray-500 font-japanese">新規アカウント作成</p>
         </div>
 
         <div className="space-y-4">
@@ -77,10 +81,9 @@ export default function LoginPage() {
           />
         </div>
 
-        {/* ボタンエリア */}
         <div className="space-y-3">
           <button
-            onClick={handleLogin}
+            onClick={handleSignUp}
             disabled={loading}
             className="
               w-full py-3 rounded-xl text-sm font-semibold text-white
@@ -88,17 +91,17 @@ export default function LoginPage() {
               transition-all hover:scale-105 active:scale-95 disabled:opacity-50
             "
           >
-            {loading ? "ログイン中..." : "ログイン"}
+            {loading ? "作成中..." : "アカウントを作成"}
           </button>
 
-          {/* 新規登録への導線を追加 */}
           <button
-            onClick={() => router.push("/signup")}
-            className="w-full text-xs text-gray-400 hover:text-sky-500 transition"
+            onClick={() => router.push("/login")}
+            className="w-full text-xs text-gray-400 hover:text-sky-500 transition font-japanese"
           >
-            アカウントをお持ちではありませんか？ 新規登録
+            すでにアカウントをお持ちですか？ ログイン
           </button>
         </div>
+
       </div>
     </main>
   );
