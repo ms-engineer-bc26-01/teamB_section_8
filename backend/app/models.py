@@ -12,9 +12,13 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_name = Column(String, nullable=True)
     email = Column(String, nullable=False)
     temperature_sensitivity = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    zip_code_1 = Column(String, nullable=True)
+    zip_code_2 = Column(String, nullable=True)
+
 
     items = relationship("Item", back_populates="user", cascade="all, delete-orphan")
     conversations = relationship("Conversation", back_populates="user", cascade="all, delete-orphan")

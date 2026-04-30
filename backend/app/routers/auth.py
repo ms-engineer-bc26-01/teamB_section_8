@@ -31,7 +31,14 @@ async def signup(req: SignupRequest, db: Session = Depends(get_db)):
                 status_code=400,
                 detail="Dev user already registered. Change DEV_USER_UID to register a different dev user.",
             )
-        db_user = User(id=user_id, email=req.email)
+        db_user = User(
+            id=user_id,
+            email=req.email,
+            user_name=req.user_name,
+            temperature_sensitivity=req.temperature_sensitivity,
+            zip_code_1=req.zip_code_1,
+            zip_code_2=req.zip_code_2,
+        )
         db.add(db_user)
         db.commit()
         db.refresh(db_user)
@@ -55,7 +62,14 @@ async def signup(req: SignupRequest, db: Session = Depends(get_db)):
 
     # DBにユーザーレコードを作成（失敗時は Firebase ユーザーを削除してロールバック）
     user_id = uid_to_uuid(firebase_user.uid)
-    db_user = User(id=user_id, email=req.email)
+    db_user = User(
+        id=user_id,
+        email=req.email,
+        user_name=req.user_name,
+        temperature_sensitivity=req.temperature_sensitivity,
+        zip_code_1=req.zip_code_1,
+        zip_code_2=req.zip_code_2,
+    )
     db.add(db_user)
     try:
         db.commit()

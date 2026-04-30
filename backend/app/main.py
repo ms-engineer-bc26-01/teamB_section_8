@@ -21,6 +21,7 @@ from app.services.outfit import generate_outfit
 from app.services.llm import generate_response
 from app.routers import item as item_router
 from app.routers import outfit as outfit_router
+from app.routers import users as users_router
 from app.dependencies import IS_DEV_ENV, get_current_user
 
 app = FastAPI()
@@ -63,6 +64,7 @@ app.include_router(auth_router.router)
 # ルーターのインクルード
 app.include_router(item_router.router)
 app.include_router(outfit_router.router)
+app.include_router(users_router.router)
 
 
 
