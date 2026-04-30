@@ -6,9 +6,9 @@ from firebase_admin import auth
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.dependencies import IS_DEV_ENV, uid_to_uuid
+from app.dependencies import IS_DEV_ENV, get_current_user, uid_to_uuid
 from app.models import User
-from app.schemas.auth import AuthResponse, LoginRequest, SignupRequest
+from app.schemas.auth import AuthResponse, LoginRequest, SignupRequest, SyncResponse
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -183,3 +183,20 @@ async def login(req: LoginRequest, db: Session = Depends(get_db)):
         user_id=str(db_user.id),
         access_token=id_token,
     )
+
+
+@router.post("/sync", response_model=SyncResponse)
+async def sync_user(
+    user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Firebase 認証済みユーザーを DB に同期する（存在しなければ作成、存在すれば何もしない）"""
+    user_id = uid_to_uuid(user["uid"])
+    db_user = db.query(User).filter(User.id == user_id).first()
+    if not db_user:
+        email = user.get("email", "")
+        db_user = User(id=user_id, email=email)
+        db.add(db_user)
+        db.commit()
+        db.refresh(db_user)
+    return SyncResponse(user_id=str(db_user.id))

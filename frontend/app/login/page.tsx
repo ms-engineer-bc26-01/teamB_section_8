@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { auth } from "@/lib/firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
+import apiClient from "@/lib/apiClient";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -24,7 +25,11 @@ export default function LoginPage() {
       setLoading(true);
 
       // 1. Firebase認証でログイン
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password,
+      );
       const user = userCredential.user;
 
       /**
@@ -38,9 +43,12 @@ export default function LoginPage() {
       localStorage.setItem("token", token);
       localStorage.setItem("login", "true");
 
+      // 4. DB にユーザーレコードが存在しない場合に備えて同期する
+      await apiClient.post("/auth/sync");
+
       console.log("ログイン成功、トークンを保存しました");
 
-      // 4. ダッシュボードへ遷移
+      // 5. ダッシュボードへ遷移
       router.push("/");
     } catch (error: any) {
       alert("ログインに失敗しました。パスワードを確認してください。");
@@ -53,7 +61,6 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen flex items-center justify-center bg-gradient-to-b from-sky-100 to-pink-100 font-japanese">
       <div className="w-[360px] h-[640px] bg-white rounded-[40px] shadow-xl p-6 flex flex-col justify-center space-y-6">
-        
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-bold text-gray-800">Climo ☁️</h1>
           <p className="text-sm text-gray-500">ログインしてください</p>
