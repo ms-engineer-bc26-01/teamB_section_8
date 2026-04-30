@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 import os
+import re
 from typing import Any
 
 import httpx
 from fastapi import HTTPException
 
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY", "")  # 環境変数から読み込む
-OPENWEATHER_GEO_BASE_URL = "https://api.openweathermap.org/geo/1.0"
 OPENWEATHER_DATA_BASE_URL = "https://api.openweathermap.org/data/2.5"
 OPENWEATHER_COUNTRY_CODE = "JP"
+HEARTRAILS_GEO_BASE_URL = "https://geoapi.heartrails.com/api/json"
 OPENWEATHER_UNITS = "metric"
 OPENWEATHER_CNT = "5" # 3時間ごとの予報を5件取得
 OPENWEATHER_LANG = "ja"
@@ -33,36 +34,60 @@ WEATHER_MAIN_JA: dict[str, str] = {
 }
 
 
+def _normalize_zip_code(zip_code: str) -> str:
+	return re.sub(r"\D", "", zip_code)
+
+
+async def _resolve_coordinates_by_zip(
+	client: httpx.AsyncClient, zip_code: str
+) -> tuple[float, float, str]:
+	response = await client.get(
+		HEARTRAILS_GEO_BASE_URL,
+		params={
+			"method": "searchByPostal",
+			"postal": zip_code,
+		},
+	)
+
+	if response.status_code >= 400:
+		raise HTTPException(
+			status_code=response.status_code,
+			detail=f"Failed to resolve zip code: {response.text}",
+		)
+
+	data = response.json()
+	locations = data.get("response", {}).get("location") or []
+	if not locations:
+		raise HTTPException(
+			status_code=404,
+			detail="Latitude/Longitude not found for this zip code",
+		)
+
+	location = locations[0]
+	lat = location.get("y")
+	lon = location.get("x")
+	if lat is None or lon is None:
+		raise HTTPException(
+			status_code=404,
+			detail="Latitude/Longitude not found for this zip code",
+		)
+
+	name = f"{location.get('prefecture', '')}{location.get('city', '')}{location.get('town', '')}".strip()
+	return float(lat), float(lon), name or zip_code
+
+
 async def fetch_weather_by_zip(zip_code: str) -> dict[str, Any]:
 	if not OPENWEATHER_API_KEY:
 		raise HTTPException(status_code=503, detail="OPENWEATHER_API_KEY is not set. Please configure the environment variable.")
 
-	zip_query = f"{zip_code},{OPENWEATHER_COUNTRY_CODE}"
+	normalized_zip_code = _normalize_zip_code(zip_code)
+	if len(normalized_zip_code) != 7:
+		raise HTTPException(status_code=400, detail="Zip code must be a 7-digit number")
 
 	async with httpx.AsyncClient(timeout=10.0) as client:
-		geo_response = await client.get(
-			f"{OPENWEATHER_GEO_BASE_URL}/zip",
-			params={
-				"zip": zip_query,
-				"appid": OPENWEATHER_API_KEY,
-			},
+		lat, lon, location_name = await _resolve_coordinates_by_zip(
+			client, normalized_zip_code
 		)
-
-		if geo_response.status_code >= 400:
-			raise HTTPException(
-				status_code=geo_response.status_code,
-				detail=f"Failed to resolve zip code: {geo_response.text}",
-			)
-
-		geo_data = geo_response.json()
-		lat = geo_data.get("lat")
-		lon = geo_data.get("lon")
-
-		if lat is None or lon is None:
-			raise HTTPException(
-				status_code=404,
-				detail="Latitude/Longitude not found for this zip code",
-			)
 
 		current_response = await client.get(
 			f"{OPENWEATHER_DATA_BASE_URL}/weather",
@@ -133,9 +158,9 @@ async def fetch_weather_by_zip(zip_code: str) -> dict[str, Any]:
 
 	return {
 		"location": {
-			"zip_code": zip_code,
+			"zip_code": normalized_zip_code,
 			"country_code": OPENWEATHER_COUNTRY_CODE,
-			"name": geo_data.get("name"),
+			"name": location_name,
 			"lat": lat,
 			"lon": lon,
 		},

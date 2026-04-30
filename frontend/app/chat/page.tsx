@@ -9,6 +9,21 @@ type Message = {
   text: string;
 };
 
+type AppRouter = ReturnType<typeof useRouter>;
+
+type BottomNavProps = {
+  pathname: string;
+  router: AppRouter;
+};
+
+type NavBtnProps = {
+  icon: string;
+  label: string;
+  path: string;
+  pathname: string;
+  router: AppRouter;
+};
+
 export default function ChatPage() {
   const router = useRouter();
   const pathname = usePathname();
@@ -32,7 +47,7 @@ export default function ChatPage() {
     // ユーザーのメッセージを画面に追加
     const userMsg: Message = { role: "user", text: input };
     setMessages((prev) => [...prev, userMsg]);
-    
+
     const currentInput = input;
     setInput("");
     setLoading(true);
@@ -46,13 +61,15 @@ export default function ChatPage() {
       // AIからの返信を画面に追加
       const aiMsg: Message = { role: "ai", text: response.data.reply };
       setMessages((prev) => [...prev, aiMsg]);
-
     } catch (error) {
       console.error("Chat API Error:", error);
       // エラー時のフォールバックメッセージ
       setMessages((prev) => [
         ...prev,
-        { role: "ai", text: "すみません、エラーが発生しました。接続を確認してください。" },
+        {
+          role: "ai",
+          text: "すみません、エラーが発生しました。接続を確認してください。",
+        },
       ]);
     } finally {
       setLoading(false);
@@ -73,7 +90,6 @@ export default function ChatPage() {
   return (
     <main className="min-h-screen flex items-center justify-center bg-gradient-to-b from-sky-100 to-pink-100 font-japanese">
       <div className="w-[360px] h-[640px] bg-white rounded-[40px] shadow-xl flex flex-col overflow-hidden">
-
         {/* ヘッダー */}
         <div className="h-[56px] flex items-center justify-center border-b border-gray-200 text-base font-semibold text-gray-700 bg-white">
           💬 チャット
@@ -82,12 +98,17 @@ export default function ChatPage() {
         {/* メッセージ表示エリア */}
         <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-white">
           {messages.map((m, i) => (
-            <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-              <div className={`px-3 py-2 rounded-xl text-sm ${
-                m.role === "user" 
-                ? "bg-gradient-to-r from-sky-400 to-pink-400 text-white" 
-                : "bg-gray-100 text-gray-800"
-              }`}>
+            <div
+              key={i}
+              className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+            >
+              <div
+                className={`px-3 py-2 rounded-xl text-sm ${
+                  m.role === "user"
+                    ? "bg-gradient-to-r from-sky-400 to-pink-400 text-white"
+                    : "bg-gray-100 text-gray-800"
+                }`}
+              >
                 {m.text}
               </div>
             </div>
@@ -134,17 +155,27 @@ export default function ChatPage() {
 }
 
 /* ===== 共通ナビゲーション（ BottomNav / NavBtn） ===== */
-function BottomNav({ pathname, router }: any) {
+function BottomNav({ pathname, router }: BottomNavProps) {
   return (
     <div className="h-[64px] border-t border-gray-200 flex justify-around items-center bg-white">
       <NavBtn icon="🏠" label="ホーム" path="/" {...{ pathname, router }} />
-      <NavBtn icon="👕" label="クローゼット" path="/closet" {...{ pathname, router }} />
-      <NavBtn icon="💬" label="チャット" path="/chat" {...{ pathname, router }} />
+      <NavBtn
+        icon="👕"
+        label="クローゼット"
+        path="/closet"
+        {...{ pathname, router }}
+      />
+      <NavBtn
+        icon="💬"
+        label="チャット"
+        path="/chat"
+        {...{ pathname, router }}
+      />
     </div>
   );
 }
 
-function NavBtn({ icon, label, path, pathname, router }: any) {
+function NavBtn({ icon, label, path, pathname, router }: NavBtnProps) {
   const active = pathname === path;
   return (
     <button

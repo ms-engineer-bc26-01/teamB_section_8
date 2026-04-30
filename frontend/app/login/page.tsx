@@ -46,9 +46,11 @@ export default function LoginPage() {
       localStorage.setItem("login", "true");
 
       loginSucceeded = true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       alert("ログインに失敗しました。パスワードを確認してください。");
-      console.error("Login Error:", error.message);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error("Login Error:", errorMessage);
     } finally {
       setLoading(false);
     }
