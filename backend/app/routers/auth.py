@@ -66,7 +66,10 @@ async def signup(req: SignupRequest, db: Session = Depends(get_db)):
             auth.delete_user(firebase_user.uid)
         except Exception:
             pass
-        raise HTTPException(status_code=500, detail="Failed to create user record") from e
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to create user record: {str(e)}",
+        ) from e
 
     if not FIREBASE_WEB_API_KEY:
         raise HTTPException(status_code=500, detail="FIREBASE_WEB_API_KEY is not configured")
@@ -96,7 +99,10 @@ async def signup(req: SignupRequest, db: Session = Depends(get_db)):
                     "Enable Email/Password in Firebase Authentication settings."
                 ),
             )
-        raise HTTPException(status_code=500, detail="Failed to obtain Firebase ID token")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to obtain Firebase ID token: {error_message or resp.text}",
+        )
 
     data = resp.json()
     id_token: str = data["idToken"]
