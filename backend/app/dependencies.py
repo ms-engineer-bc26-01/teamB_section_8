@@ -12,6 +12,7 @@ def is_development_environment() -> bool:
 
 
 IS_DEV_ENV = is_development_environment()
+ALLOW_DEV_AUTH_BYPASS = os.getenv("ALLOW_DEV_AUTH_BYPASS", "").lower() in {"true", "1", "yes"}
 
 
 def uid_to_uuid(uid: str) -> UUID:
@@ -21,7 +22,8 @@ def uid_to_uuid(uid: str) -> UUID:
 
 async def get_current_user(authorization: str = Header(None)):
     """共通の認証依存関数"""
-    if IS_DEV_ENV:
+    # 開発時の認証バイパスは明示的に有効化された場合のみ許可する
+    if IS_DEV_ENV and ALLOW_DEV_AUTH_BYPASS:
         return {
             "uid": os.getenv("DEV_USER_UID", "dev-user"),
             "email": os.getenv("DEV_USER_EMAIL", "dev@example.com"),

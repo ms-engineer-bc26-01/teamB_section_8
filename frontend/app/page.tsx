@@ -145,6 +145,12 @@ export default function DashboardPage() {
           >
             ログアウト
           </button>
+          <button
+            onClick={() => router.push("/settings")}
+            className="text-xs text-gray-400 hover:text-sky-500 transition-colors absolute right-4"
+          >
+            プロフィール
+          </button>
           <div className="flex-1 text-center text-base font-semibold text-gray-700">
             ☀️ 今日のコーデ
           </div>

@@ -3,7 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { auth } from "@/lib/firebase";
-import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import {
+  createUserWithEmailAndPassword,
+  signOut,
+  updateProfile,
+} from "firebase/auth";
 import apiClient from "@/lib/apiClient";
 
 /**
@@ -65,7 +69,7 @@ export default function SignUpPage() {
       await updateProfile(user, { displayName: username });
 
       // --- ステップ3: Firebase IDトークンの取得と保存 ---
-      const token = await user.getIdToken();
+      const token = await user.getIdToken(true);
       localStorage.setItem("token", token);
 
       // --- ステップ4: バックエンドAPIとの同期 ---
@@ -78,15 +82,13 @@ export default function SignUpPage() {
         zip_code_2: zipCode2 || null,
       });
 
-      // --- ステップ5: ローカルストレージへの保存（ダッシュボード用） ---
-      localStorage.setItem("login", "true");
-      localStorage.setItem("userName", username);
-      localStorage.setItem("userZip1", zipCode1);
-      localStorage.setItem("userZip2", zipCode2);
-      localStorage.setItem("constitution", constitution);
+      // --- ステップ5: signup直後は自動ログイン扱いにせず、明示ログインへ誘導 ---
+      await signOut(auth);
+      localStorage.removeItem("token");
+      localStorage.removeItem("login");
 
-      alert("登録が完了しました！");
-      router.push("/"); // トップページ（ダッシュボード）へ移動
+      alert("登録が完了しました。ログインしてください。");
+      router.push("/login");
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
