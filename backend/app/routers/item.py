@@ -35,16 +35,31 @@ async def create_item(
         if image.content_type not in ALLOWED_CONTENT_TYPES:
             raise HTTPException(status_code=400, detail="Invalid image type. Allowed: jpeg, png, webp, gif")
 
-        content = await image.read()
-        if len(content) > MAX_FILE_SIZE:
-            raise HTTPException(status_code=400, detail="Image size exceeds 10MB limit")
-
         ext = image.content_type.split("/")[-1]
         filename = f"{uuid_lib.uuid4()}.{ext}"
         os.makedirs(UPLOAD_DIR, exist_ok=True)
         file_path = os.path.join(UPLOAD_DIR, filename)
-        with open(file_path, "wb") as f:
-            f.write(content)
+
+        chunk_size = 1024 * 1024  # 1MB
+        total_size = 0
+
+        try:
+            with open(file_path, "wb") as f:
+                while True:
+                    chunk = await image.read(chunk_size)
+                    if not chunk:
+                        break
+
+                    total_size += len(chunk)
+                    if total_size > MAX_FILE_SIZE:
+                        raise HTTPException(status_code=400, detail="Image size exceeds 10MB limit")
+
+                    f.write(chunk)
+        except HTTPException:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            raise
+
         image_url = filename
 
     user_id = uid_to_uuid(user["uid"])
