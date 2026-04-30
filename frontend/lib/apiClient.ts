@@ -2,9 +2,13 @@ import axios from 'axios';
 
 /**
  * 共通のAPIクライアント設定
+ * 
+ * 注意: CORSエラーを回避するため、直接バックエンド(8000番)を叩かず、
+ * Next.jsのRewrites機能を利用して /api-proxy 経由でリクエストを送ります。
  */
 const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
+  // ✅ 修正: next.config.ts で設定したプロキシパスを使用
+  baseURL: '/api-proxy', 
   headers: {
     'Content-Type': 'application/json',
   },
@@ -12,13 +16,15 @@ const apiClient = axios.create({
 
 /**
  * リクエストインターセプター
- * 送信前に毎回 localStorage から最新のトークンを取得してセットする
+ * 送信前に毎回 localStorage から最新の認証トークンを取得してヘッダーにセットする
  */
 apiClient.interceptors.request.use(
   (config) => {
+    // クライアントサイド（ブラウザ）でのみ実行
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('token');
       if (token) {
+        // Firebaseの認証トークンをBearerスキームで付与
         config.headers.Authorization = `Bearer ${token}`;
       }
     }
@@ -31,11 +37,12 @@ apiClient.interceptors.request.use(
 
 /**
  * レスポンスインターセプター
- * 401エラー（認証切れ）が発生した際の共通処理
+ * 401エラー（認証切れ）が発生した際の共通エラーハンドリング
  */
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    // 認証エラー（401 Unauthorized）の場合、自動的にログイン画面へリダイレクト
     if (error.response?.status === 401) {
       console.warn("認証トークンが無効です。再ログインしてください。");
       if (typeof window !== 'undefined') {
