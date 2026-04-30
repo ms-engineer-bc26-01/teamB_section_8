@@ -15,11 +15,13 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - APP_ENV=${APP_ENV}
       - FIREBASE_WEB_API_KEY=${FIREBASE_WEB_API_KEY}
+      - FIREBASE_CONFIG_PATH=/run/secrets/firebase/serviceAccountKey.json
       - DEV_USER_UID=${DEV_USER_UID:-dev-user}
       - DEV_USER_EMAIL=${DEV_USER_EMAIL:-dev@example.com}
       - ALLOW_DEV_AUTH_BYPASS=${ALLOW_DEV_AUTH_BYPASS:-false}
     volumes:
       - ./uploads:/app/uploads
+      - ../.secrets/firebase:/run/secrets/firebase:ro
     depends_on:
       db:
         condition: service_healthy
