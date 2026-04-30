@@ -20,3 +20,7 @@ class LoginRequest(BaseModel):
 class AuthResponse(BaseModel):
     user_id: str
     access_token: str
+
+
+class SyncResponse(BaseModel):
+    user_id: str

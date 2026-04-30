@@ -72,8 +72,11 @@ app.include_router(users_router.router)
 if IS_DEV_ENV:
     print("Development mode: Firebase auth is disabled")
 else:
-    # 環境変数などでパスを指定できるようにしておくと便利です [cite: 9]
-    cred_path = os.getenv("FIREBASE_CONFIG_PATH", "app/config/serviceAccountKey.json")
+    # 既定はリポジトリ直下の共通シークレット配置を参照（__file__ 基準の絶対パスで解決）
+    _default_cred_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../../.secrets/firebase/serviceAccountKey.json")
+    )
+    cred_path = os.getenv("FIREBASE_CONFIG_PATH", _default_cred_path)
     try:
         cred = credentials.Certificate(cred_path)
         if not firebase_admin._apps:

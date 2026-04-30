@@ -1,20 +1,19 @@
-//  Firebase初期化 + 認証
+// Firebase initialization + auth
 
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 
-// Firebase設定
 const firebaseConfig = {
-  apiKey: "AIzaSyCEoVYjilkR_gQAuCBOh7zQo4zOC3QTNsc",
-  authDomain: "climo-app-c28d9.firebaseapp.com",
-  projectId: "climo-app-c28d9",
-  storageBucket: "climo-app-c28d9.firebasestorage.app",
-  messagingSenderId: "1064125997336",
-  appId: "1:1064125997336:web:5fc9497d83a8eb1a5b7e6d",
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "",
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "",
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "",
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "",
 };
 
-// 初期化
+if (!firebaseConfig.apiKey || !firebaseConfig.authDomain || !firebaseConfig.projectId) {
+  throw new Error("Firebase config is missing. Check shared serviceAccountKey.json and frontend env setup.");
+}
+
 const app = initializeApp(firebaseConfig);
 
-// 認証インスタンス
 export const auth = getAuth(app);
