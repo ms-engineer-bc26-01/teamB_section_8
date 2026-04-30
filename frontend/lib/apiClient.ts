@@ -1,17 +1,14 @@
-import axios from 'axios';
+import axios from "axios";
 
 /**
  * 共通のAPIクライアント設定
- * 
+ *
  * 注意: CORSエラーを回避するため、直接バックエンド(8000番)を叩かず、
  * Next.jsのRewrites機能を利用して /api-proxy 経由でリクエストを送ります。
  */
 const apiClient = axios.create({
   // ✅ 修正: next.config.ts で設定したプロキシパスを使用
-  baseURL: '/api-proxy', 
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  baseURL: "/api-proxy",
 });
 
 /**
@@ -20,9 +17,16 @@ const apiClient = axios.create({
  */
 apiClient.interceptors.request.use(
   (config) => {
+    // FormDataのときはブラウザにContent-Type（boundary付き）を自動設定させる
+    if (typeof FormData !== "undefined" && config.data instanceof FormData) {
+      if (config.headers) {
+        delete config.headers["Content-Type"];
+      }
+    }
+
     // クライアントサイド（ブラウザ）でのみ実行
-    if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('token');
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("token");
       if (token) {
         // Firebaseの認証トークンをBearerスキームで付与
         config.headers.Authorization = `Bearer ${token}`;
@@ -32,7 +36,7 @@ apiClient.interceptors.request.use(
   },
   (error) => {
     return Promise.reject(error);
-  }
+  },
 );
 
 /**
@@ -45,14 +49,14 @@ apiClient.interceptors.response.use(
     // 認証エラー（401 Unauthorized）の場合、自動的にログイン画面へリダイレクト
     if (error.response?.status === 401) {
       console.warn("認証トークンが無効です。再ログインしてください。");
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('token');
-        localStorage.removeItem('login');
-        window.location.href = '/login';
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("token");
+        localStorage.removeItem("login");
+        window.location.href = "/login";
       }
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 export default apiClient;

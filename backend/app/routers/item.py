@@ -12,12 +12,55 @@ from app.dependencies import get_current_user, uid_to_uuid
 from app.schemas.item import CategoryEnum, ItemUpdate, ItemResponse, SeasonEnum
 from app.services import item as item_service
 
-UPLOAD_DIR = os.getenv("UPLOAD_DIR", "/app/uploads")
+logger = logging.getLogger(__name__)
+
+
+def _nearest_existing_parent(path: str) -> str:
+    """存在する最も近い親ディレクトリを返す。"""
+    current = os.path.abspath(path)
+    while not os.path.exists(current):
+        parent = os.path.dirname(current)
+        if parent == current:
+            break
+        current = parent
+    return current
+
+
+def _is_path_writable(target_dir: str) -> bool:
+    parent = _nearest_existing_parent(target_dir)
+    return os.access(parent, os.W_OK)
+
+
+def _resolve_upload_dir() -> str:
+    """コンテナ優先で、書き込み不可ならローカル開発向けパスへフォールバックする。"""
+    local_fallback = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../../../infra/uploads")
+    )
+
+    configured = os.getenv("UPLOAD_DIR")
+    if configured:
+        if _is_path_writable(configured):
+            return configured
+
+        logger.warning(
+            "Configured UPLOAD_DIR '%s' is not writable. Falling back to '%s'.",
+            configured,
+            local_fallback,
+        )
+        return local_fallback
+
+    container_default = "/app/uploads"
+    if _is_path_writable(container_default):
+        return container_default
+
+    return local_fallback
+
+
+UPLOAD_DIR = _resolve_upload_dir()
 ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
 router = APIRouter(prefix="/items", tags=["items"])
-logger = logging.getLogger(__name__)
 
 
 @router.post("", response_model=ItemResponse)
