@@ -54,11 +54,7 @@ export const itemService = {
       formData.append("image", itemData.image);
     }
 
-    const response = await apiClient.post("/items", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
+    const response = await apiClient.post("/items", formData);
     return response.data as ClosetItem;
   },
 
@@ -83,11 +79,7 @@ export const itemService = {
     const formData = new FormData();
     formData.append("image", image);
 
-    const response = await apiClient.put(`/items/${itemId}/image`, formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
+    const response = await apiClient.put(`/items/${itemId}/image`, formData);
     return response.data as ClosetItem;
   },
 

@@ -21,6 +21,8 @@ export default function LoginPage() {
       return;
     }
 
+    let loginSucceeded = false;
+
     try {
       setLoading(true);
 
@@ -43,19 +45,25 @@ export default function LoginPage() {
       localStorage.setItem("token", token);
       localStorage.setItem("login", "true");
 
-      // 4. DB にユーザーレコードが存在しない場合に備えて同期する
-      await apiClient.post("/auth/sync");
-
-      console.log("ログイン成功、トークンを保存しました");
-
-      // 5. ダッシュボードへ遷移
-      router.push("/");
+      loginSucceeded = true;
     } catch (error: any) {
       alert("ログインに失敗しました。パスワードを確認してください。");
       console.error("Login Error:", error.message);
     } finally {
       setLoading(false);
     }
+
+    if (!loginSucceeded) return;
+
+    // 4. DB にユーザーレコードが存在しない場合に備えて同期する（失敗しても遷移を続行）
+    try {
+      await apiClient.post("/auth/sync");
+    } catch (syncError) {
+      console.error("DB sync failed:", syncError);
+    }
+
+    // 5. ダッシュボードへ遷移
+    router.push("/");
   };
 
   return (

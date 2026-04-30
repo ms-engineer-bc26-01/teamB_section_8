@@ -38,7 +38,7 @@ function parseInfraEnv(envPath: string): Record<string, string> {
 }
 
 function loadSharedFirebaseConfig() {
-  const repoRoot = path.resolve(process.cwd(), "..");
+  const repoRoot = path.resolve(__dirname, "..");
   const serviceAccountPath = path.join(
     repoRoot,
     ".secrets",

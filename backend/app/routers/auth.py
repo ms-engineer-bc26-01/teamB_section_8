@@ -1,14 +1,18 @@
+import logging
 import os
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from firebase_admin import auth
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.dependencies import IS_DEV_ENV, get_current_user, uid_to_uuid
 from app.models import User
 from app.schemas.auth import AuthResponse, LoginRequest, SignupRequest, SyncResponse
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -195,8 +199,27 @@ async def sync_user(
     db_user = db.query(User).filter(User.id == user_id).first()
     if not db_user:
         email = user.get("email", "")
+        if not email:
+            # email claim が無い場合は Firebase Admin で補完を試みる
+            try:
+                firebase_user = auth.get_user(user["uid"])
+                email = firebase_user.email or ""
+            except Exception as e:
+                logger.warning("Failed to fetch Firebase user for uid %s: %s", user["uid"], e)
+        if not email:
+            raise HTTPException(
+                status_code=400,
+                detail="Email is required to create a user record but was not found in the token or Firebase.",
+            )
         db_user = User(id=user_id, email=email)
         db.add(db_user)
-        db.commit()
-        db.refresh(db_user)
+        try:
+            db.commit()
+            db.refresh(db_user)
+        except SQLAlchemyError as e:
+            db.rollback()
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to create user record: {str(e)}",
+            ) from e
     return SyncResponse(user_id=str(db_user.id))
