@@ -12,55 +12,61 @@ export default function DashboardPage() {
   const [index, setIndex] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  // 天気情報のステート（city と zip を追加）
   const [weather, setWeather] = useState({
     temp: "--",
     condition: "--",
     city: "--",
-    zip: "1000001" // 初期値
+    zip: "" 
   });
 
-  const outfits = [
+  // --- コーデのマスターデータ ---
+  const outfitSuggestions = [
     {
-      tops: "白Tシャツ",
-      bottoms: "デニム",
-      shoes: "スニーカー",
-      comment: "朝晩は少し冷えるので軽いジャケットがおすすめです",
+      tops: "半袖Tシャツ",
+      bottoms: "ショートパンツ",
+      shoes: "サンダル",
+      comment: "暑い一日になりそうです。通気性の良い服装を選びましょう。",
     },
     {
-      tops: "薄手ニット",
-      bottoms: "スカート",
-      shoes: "ローファー",
-      comment: "少し肌寒いのでニットスタイルがぴったりです",
+      tops: "長袖シャツ",
+      bottoms: "チノパン",
+      shoes: "スニーカー",
+      comment: "過ごしやすい気温です。軽い羽織ものがあると安心です。",
+    },
+    {
+      tops: "厚手コート",
+      bottoms: "ウールパンツ",
+      shoes: "ブーツ",
+      comment: "かなり冷え込みます。しっかり防寒対策をして出かけましょう。",
     },
   ];
 
-  // --- APIデータ取得 ---
+  // --- APIデータ取得とロジック同期 ---
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
+        const savedZip = localStorage.getItem("userZip1") || "1000001"; 
 
-        const targetZip = "1000001"; // 送信する郵便番号
         const weatherRes = await apiClient.get("/weather", {
-          params: {
-            zip_code: targetZip
-          }
+          params: { zip_code: savedZip }
         });
 
-        // デバッグ用に取得データを確認
-        console.log("Weather Data:", weatherRes.data);
-
-        // JSON構造からデータを抽出
-        // 構造: data.weather.location (都市名), data.weather.current (天気詳細)
         const locationName = weatherRes.data.weather.location;
         const currentData = weatherRes.data.weather.current;
+        const currentTemp = parseFloat(currentData.temp);
 
+        let autoIndex = 0;
+        if (currentTemp >= 25) autoIndex = 0;
+        else if (currentTemp >= 15) autoIndex = 1;
+        else autoIndex = 2;
+
+        setIndex(autoIndex);
         setWeather({
           temp: currentData.temp,
           condition: currentData.weather,
-          city: locationName, // 都市名を設定
-          zip: targetZip       // 郵便番号を設定
+          city: locationName, 
+          zip: savedZip
         });
 
       } catch (error) {
@@ -73,25 +79,39 @@ export default function DashboardPage() {
     fetchData();
   }, []);
 
+  // --- ログアウト処理 ---
+  const handleLogout = () => {
+    if (confirm("ログアウトしますか？")) {
+      localStorage.clear();
+      router.push("/login");
+    }
+  };
+
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gradient-to-b from-sky-100 to-pink-100">
+    <main className="min-h-screen flex items-center justify-center bg-gradient-to-b from-sky-100 to-pink-100 font-japanese">
       <div className="w-[360px] h-[640px] bg-white rounded-[40px] shadow-xl flex flex-col overflow-hidden">
 
-        {/* ヘッダー */}
-        <div className="h-[56px] flex items-center justify-center border-b border-gray-200 text-base font-semibold text-gray-700">
-          ☀️ 今日のコーデ
+        {/* ヘッダー：左側にログアウトボタンを配置 */}
+        <div className="h-[56px] flex items-center px-4 border-b border-gray-200 relative">
+          <button 
+            onClick={handleLogout}
+            className="text-xs text-gray-400 hover:text-red-400 transition-colors absolute left-4"
+          >
+            ログアウト
+          </button>
+          <div className="flex-1 text-center text-base font-semibold text-gray-700">
+            ☀️ 今日のコーデ
+          </div>
         </div>
 
-        {/* メイン */}
+        {/* メイン内容 */}
         <div className="flex-1 p-4">
           
-          {/* 天気・地域表示エリア */}
           <div className="bg-sky-100 rounded-2xl p-4 text-center mb-4">
             {loading ? (
               <p className="text-sm text-gray-400">Loading...</p>
             ) : (
               <>
-                {/* 城市和邮编显示 */}
                 <p className="text-xs text-sky-600 font-medium mb-1">
                   📍 {weather.city} (〒{weather.zip})
                 </p>
@@ -102,20 +122,20 @@ export default function DashboardPage() {
           </div>
 
           <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-100 mb-4">
-            <p className="text-sm font-semibold mb-2">コーデ {index + 1}</p>
+            <p className="text-sm font-semibold mb-2">おすすめコーデ {index + 1}</p>
             <ul className="text-sm text-gray-700 space-y-1">
-              <li>👕 {outfits[index].tops}</li>
-              <li>👖 {outfits[index].bottoms}</li>
-              <li>👟 {outfits[index].shoes}</li>
+              <li>👕 {outfitSuggestions[index].tops}</li>
+              <li>👖 {outfitSuggestions[index].bottoms}</li>
+              <li>👟 {outfitSuggestions[index].shoes}</li>
             </ul>
-            <div className="mt-3 bg-pink-50 rounded-xl p-2 text-xs text-pink-600">
-              {outfits[index].comment}
+            <div className="mt-3 bg-pink-50 rounded-xl p-2 text-xs text-pink-600 font-medium">
+              {outfitSuggestions[index].comment}
             </div>
           </div>
 
           <div className="flex gap-2">
             <button
-              onClick={() => setIndex((index + 1) % outfits.length)}
+              onClick={() => setIndex((index + 1) % outfitSuggestions.length)}
               className="flex-1 bg-gradient-to-r from-sky-400 to-sky-500 text-white py-2 rounded-xl text-sm hover:scale-105 active:scale-90 transition"
             >
               別のコーデ
@@ -126,13 +146,14 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* 下部ナビゲーション (元のBottomNavに戻す) */}
         <BottomNav pathname={pathname} router={router} />
       </div>
     </main>
   );
 }
 
-/* ===== サブコンポーネント（変更なし） ===== */
+/* ===== サブコンポーネント ===== */
 
 function BottomNav({ pathname, router }: any) {
   return (

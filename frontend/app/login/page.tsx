@@ -29,13 +29,11 @@ export default function LoginPage() {
 
       /**
        * 2. 重要：FirebaseからIDトークンを取得
-       * バックエンド（FastAPI）の認証でこのトークンが必要になります。
        */
       const token = await user.getIdToken();
 
       /**
        * 3. トークンとログイン状態を保存
-       * 以后 apiClient 会自动从这里读取 token 并发送给后端
        */
       localStorage.setItem("token", token);
       localStorage.setItem("login", "true");
@@ -53,12 +51,12 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-gradient-to-b from-sky-100 to-pink-100">
+    <main className="min-h-screen flex items-center justify-center bg-gradient-to-b from-sky-100 to-pink-100 font-japanese">
       <div className="w-[360px] h-[640px] bg-white rounded-[40px] shadow-xl p-6 flex flex-col justify-center space-y-6">
         
         <div className="text-center space-y-2">
-          <h1 className="text-2xl font-bold font-japanese text-gray-800">Climo ☁️</h1>
-          <p className="text-sm text-gray-500 font-japanese">ログインしてください</p>
+          <h1 className="text-2xl font-bold text-gray-800">Climo ☁️</h1>
+          <p className="text-sm text-gray-500">ログインしてください</p>
         </div>
 
         <div className="space-y-4">
@@ -79,17 +77,28 @@ export default function LoginPage() {
           />
         </div>
 
-        <button
-          onClick={handleLogin}
-          disabled={loading}
-          className="
-            w-full py-3 rounded-xl text-sm font-semibold text-white
-            bg-gradient-to-r from-sky-400 to-pink-400 shadow-md
-            transition-all hover:scale-105 active:scale-95 disabled:opacity-50
-          "
-        >
-          {loading ? "ログイン中..." : "ログイン"}
-        </button>
+        {/* ボタンエリア */}
+        <div className="space-y-3">
+          <button
+            onClick={handleLogin}
+            disabled={loading}
+            className="
+              w-full py-3 rounded-xl text-sm font-semibold text-white
+              bg-gradient-to-r from-sky-400 to-pink-400 shadow-md
+              transition-all hover:scale-105 active:scale-95 disabled:opacity-50
+            "
+          >
+            {loading ? "ログイン中..." : "ログイン"}
+          </button>
+
+          {/* 新規登録への導線を追加 */}
+          <button
+            onClick={() => router.push("/signup")}
+            className="w-full text-xs text-gray-400 hover:text-sky-500 transition"
+          >
+            アカウントをお持ちではありませんか？ 新規登録
+          </button>
+        </div>
       </div>
     </main>
   );
