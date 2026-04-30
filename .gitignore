@@ -85,3 +85,4 @@ Thumbs.db
 serviceAccountKey.json
 .secrets/
 
+infra/uploads/
