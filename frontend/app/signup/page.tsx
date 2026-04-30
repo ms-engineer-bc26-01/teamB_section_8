@@ -54,7 +54,11 @@ export default function SignUpPage() {
       setLoading(true);
 
       // --- ステップ1: Firebase Auth でユーザー作成 ---
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password,
+      );
       const user = userCredential.user;
 
       // --- ステップ2: Firebaseの表示名を更新 ---
@@ -65,22 +69,14 @@ export default function SignUpPage() {
       localStorage.setItem("token", token);
 
       // --- ステップ4: バックエンドAPIとの同期 ---
-      // バックエンドのUserモデル定義（email, temperature_sensitivity）に合わせます
-      const backendUserData = {
-        email: email,
+      // Firebase認証済みユーザーをDBに作成し、プロフィールを更新する
+      await apiClient.post("/auth/sync");
+      await apiClient.patch("/users/me", {
+        user_name: username,
         temperature_sensitivity: constitution,
-      };
-
-      console.log("バックエンド送信データ:", backendUserData);
-
-      try {
-        // バックエンドの /auth/signup エンドポイントにPOST
-        await apiClient.post("/auth/signup", backendUserData);
-        console.log("バックエンドDBとの同期成功");
-      } catch (apiErr: any) {
-        // すでにDBにユーザーが存在する場合などのエラーハンドリング
-        console.warn("バックエンド同期警告:", apiErr.response?.data || apiErr.message);
-      }
+        zip_code_1: zipCode1,
+        zip_code_2: zipCode2 || null,
+      });
 
       // --- ステップ5: ローカルストレージへの保存（ダッシュボード用） ---
       localStorage.setItem("login", "true");
@@ -91,14 +87,15 @@ export default function SignUpPage() {
 
       alert("登録が完了しました！");
       router.push("/"); // トップページ（ダッシュボード）へ移動
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error("SignUp Error:", errorMessage);
 
-    } catch (error: any) {
-      console.error("SignUp Error:", error.message);
-      
       // Firebaseエラーの日本語化
-      if (error.message.includes("email-already-in-use")) {
+      if (errorMessage.includes("email-already-in-use")) {
         alert("このメールアドレスは既に登録されています。");
-      } else if (error.message.includes("weak-password")) {
+      } else if (errorMessage.includes("weak-password")) {
         alert("パスワードは6文字以上で入力してください。");
       } else {
         alert("登録中にエラーが発生しました。入力内容を確認してください。");
@@ -111,7 +108,6 @@ export default function SignUpPage() {
   return (
     <main className="min-h-screen flex items-center justify-center bg-gradient-to-b from-sky-100 to-pink-100 font-japanese">
       <div className="w-[360px] h-[640px] bg-white rounded-[40px] shadow-xl p-6 flex flex-col justify-center space-y-5">
-        
         {/* ヘッダー部分 */}
         <div className="text-center space-y-1">
           <h1 className="text-2xl font-bold text-gray-800">Climo ☁️</h1>
@@ -149,16 +145,22 @@ export default function SignUpPage() {
           <div className="space-y-1 text-left">
             <p className="text-[10px] text-gray-400 ml-2">体質について</p>
             <div className="flex gap-2">
-              {(['hot', 'normal', 'cold'] as const).map((type) => (
+              {(["hot", "normal", "cold"] as const).map((type) => (
                 <button
                   key={type}
                   type="button"
                   onClick={() => setConstitution(type)}
                   className={`flex-1 py-2 rounded-xl text-[10px] border transition ${
-                    constitution === type ? "bg-sky-400 text-white border-sky-400 shadow-sm" : "bg-gray-50 text-gray-400 border-gray-100"
+                    constitution === type
+                      ? "bg-sky-400 text-white border-sky-400 shadow-sm"
+                      : "bg-gray-50 text-gray-400 border-gray-100"
                   }`}
                 >
-                  {type === 'hot' ? '🥵 暑がり' : type === 'normal' ? '😐 普通' : '🥶 寒がり'}
+                  {type === "hot"
+                    ? "🥵 暑がり"
+                    : type === "normal"
+                      ? "😐 普通"
+                      : "🥶 寒がり"}
                 </button>
               ))}
             </div>
@@ -166,7 +168,9 @@ export default function SignUpPage() {
 
           {/* 郵便番号入力 */}
           <div className="space-y-1 text-left">
-            <p className="text-[10px] text-gray-400 ml-2">郵便番号（地点1は必須）</p>
+            <p className="text-[10px] text-gray-400 ml-2">
+              郵便番号（地点1は必須）
+            </p>
             <div className="flex gap-2">
               <input
                 type="text"
@@ -197,7 +201,10 @@ export default function SignUpPage() {
           >
             {loading ? "登録中..." : "アカウントを作成する"}
           </button>
-          <button onClick={() => router.push("/login")} className="w-full text-xs text-gray-400 text-center hover:text-sky-500">
+          <button
+            onClick={() => router.push("/login")}
+            className="w-full text-xs text-gray-400 text-center hover:text-sky-500"
+          >
             ログイン画面に戻る
           </button>
         </div>

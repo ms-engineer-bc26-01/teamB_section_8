@@ -4,6 +4,21 @@ import { useRouter, usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import apiClient from "@/lib/apiClient";
 
+type AppRouter = ReturnType<typeof useRouter>;
+
+type BottomNavProps = {
+  pathname: string;
+  router: AppRouter;
+};
+
+type NavBtnProps = {
+  icon: string;
+  label: string;
+  path: string;
+  pathname: string;
+  router: AppRouter;
+};
+
 export default function DashboardPage() {
   const router = useRouter();
   const pathname = usePathname();
@@ -16,7 +31,7 @@ export default function DashboardPage() {
     temp: "--",
     condition: "--",
     city: "--",
-    zip: "" 
+    zip: "",
   });
 
   // --- コーデのマスターデータ ---
@@ -46,13 +61,46 @@ export default function DashboardPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const savedZip = localStorage.getItem("userZip1") || "1000001"; 
+        const meRes = await apiClient.get("/users/me");
+        let savedZip = String(
+          meRes.data?.zip_code_1 || meRes.data?.zip_code_2 || "",
+        )
+          .replace("-", "")
+          .trim();
+
+        // 既存ユーザーでDB郵便番号が未設定の場合は、ローカル値で一度だけ補完する
+        if (!savedZip) {
+          const localZip1 = String(localStorage.getItem("userZip1") || "")
+            .replace("-", "")
+            .trim();
+          const localZip2 = String(localStorage.getItem("userZip2") || "")
+            .replace("-", "")
+            .trim();
+
+          if (localZip1) {
+            await apiClient.patch("/users/me", {
+              zip_code_1: localZip1,
+              zip_code_2: localZip2 || null,
+            });
+            savedZip = localZip1;
+          }
+        }
+
+        if (!savedZip) {
+          setWeather({
+            temp: "--",
+            condition: "郵便番号が未設定です",
+            city: "--",
+            zip: "未設定",
+          });
+          return;
+        }
 
         const weatherRes = await apiClient.get("/weather", {
-          params: { zip_code: savedZip }
+          params: { zip_code: savedZip },
         });
 
-        const locationName = weatherRes.data.weather.location;
+        const locationName = weatherRes.data.location?.name || "--";
         const currentData = weatherRes.data.weather.current;
         const currentTemp = parseFloat(currentData.temp);
 
@@ -65,10 +113,9 @@ export default function DashboardPage() {
         setWeather({
           temp: currentData.temp,
           condition: currentData.weather,
-          city: locationName, 
-          zip: savedZip
+          city: locationName,
+          zip: savedZip,
         });
-
       } catch (error) {
         console.error("API接続エラー:", error);
       } finally {
@@ -90,10 +137,9 @@ export default function DashboardPage() {
   return (
     <main className="min-h-screen flex items-center justify-center bg-gradient-to-b from-sky-100 to-pink-100 font-japanese">
       <div className="w-[360px] h-[640px] bg-white rounded-[40px] shadow-xl flex flex-col overflow-hidden">
-
         {/* ヘッダー：左側にログアウトボタンを配置 */}
         <div className="h-[56px] flex items-center px-4 border-b border-gray-200 relative">
-          <button 
+          <button
             onClick={handleLogout}
             className="text-xs text-gray-400 hover:text-red-400 transition-colors absolute left-4"
           >
@@ -106,7 +152,6 @@ export default function DashboardPage() {
 
         {/* メイン内容 */}
         <div className="flex-1 p-4">
-          
           <div className="bg-sky-100 rounded-2xl p-4 text-center mb-4">
             {loading ? (
               <p className="text-sm text-gray-400">Loading...</p>
@@ -115,14 +160,18 @@ export default function DashboardPage() {
                 <p className="text-xs text-sky-600 font-medium mb-1">
                   📍 {weather.city} (〒{weather.zip})
                 </p>
-                <p className="text-3xl font-bold text-gray-800">{weather.temp}℃</p>
+                <p className="text-3xl font-bold text-gray-800">
+                  {weather.temp}℃
+                </p>
                 <p className="text-sm text-gray-600">{weather.condition}</p>
               </>
             )}
           </div>
 
           <div className="bg-white rounded-2xl shadow-md p-4 border border-gray-100 mb-4">
-            <p className="text-sm font-semibold mb-2">おすすめコーデ {index + 1}</p>
+            <p className="text-sm font-semibold mb-2">
+              おすすめコーデ {index + 1}
+            </p>
             <ul className="text-sm text-gray-700 space-y-1">
               <li>👕 {outfitSuggestions[index].tops}</li>
               <li>👖 {outfitSuggestions[index].bottoms}</li>
@@ -155,17 +204,27 @@ export default function DashboardPage() {
 
 /* ===== サブコンポーネント ===== */
 
-function BottomNav({ pathname, router }: any) {
+function BottomNav({ pathname, router }: BottomNavProps) {
   return (
     <div className="h-[64px] border-t border-gray-200 flex justify-around items-center">
       <NavBtn icon="🏠" label="ホーム" path="/" {...{ pathname, router }} />
-      <NavBtn icon="👕" label="クローゼット" path="/closet" {...{ pathname, router }} />
-      <NavBtn icon="💬" label="チャット" path="/chat" {...{ pathname, router }} />
+      <NavBtn
+        icon="👕"
+        label="クローゼット"
+        path="/closet"
+        {...{ pathname, router }}
+      />
+      <NavBtn
+        icon="💬"
+        label="チャット"
+        path="/chat"
+        {...{ pathname, router }}
+      />
     </div>
   );
 }
 
-function NavBtn({ icon, label, path, pathname, router }: any) {
+function NavBtn({ icon, label, path, pathname, router }: NavBtnProps) {
   const active = pathname === path;
   return (
     <button
