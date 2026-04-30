@@ -104,14 +104,16 @@ export default function SignUpPage() {
       }
     } finally {
       // --- クリーンアップ: Firebase ユーザーが作成された場合は必ずサインアウトし、
-      // localStorage を全クリアして「ログイン済み状態」が残らないようにする ---
+      // 関連するlocalStorageキーを削除して「ログイン済み状態」が残らないようにする ---
       if (userCreated) {
         try {
           await signOut(auth);
-        } catch {
-          // signOut 失敗は無視（クリーンアップを続行）
+        } catch (signOutError) {
+          console.error("signOut failed during cleanup:", signOutError);
         }
-        localStorage.clear();
+        ["token", "login", "userName", "userZip1", "userZip2", "constitution"].forEach(
+          (key) => localStorage.removeItem(key),
+        );
       }
       setLoading(false);
       if (registrationSucceeded) {
