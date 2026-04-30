@@ -6,77 +6,100 @@ import { auth } from "@/lib/firebase";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import apiClient from "@/lib/apiClient";
 
+/**
+ * サインアップページコンポーネント
+ * Firebase AuthとバックエンドDBのユーザー登録を同期させます。
+ */
 export default function SignUpPage() {
   const router = useRouter();
 
   // --- ステート管理 (ユーザー入力情報) ---
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [constitution, setConstitution] = useState("normal");
-  const [zipCode1, setZipCode1] = useState("");
-  const [zipCode2, setZipCode2] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [username, setUsername] = useState(""); // 表示名（Firebase用）
+  const [email, setEmail] = useState(""); // メールアドレス
+  const [password, setPassword] = useState(""); // パスワード
+  const [constitution, setConstitution] = useState("normal"); // 体質（hot/normal/cold）
+  const [zipCode1, setZipCode1] = useState(""); // 郵便番号1（必須）
+  const [zipCode2, setZipCode2] = useState(""); // 郵便番号2（任意）
+  const [loading, setLoading] = useState(false); // ローディング状態
 
-  // 郵便番号のバリデーション：数字のみ7桁に制限
+  /**
+   * 郵便番号のバリデーション
+   * 数字のみを許可し、最大7桁に制限します。
+   */
   const handleZipChange = (value: string, setter: (val: string) => void) => {
     const formatted = value.replace(/\D/g, "").slice(0, 7);
     setter(formatted);
   };
 
-  // --- サインアップ実行メインロジック ---
+  /**
+   * サインアップ処理
+   * 1. Firebase Authでアカウント作成
+   * 2. Firebaseプロフィールの更新
+   * 3. バックエンドDBへのユーザーデータ保存
+   */
   const handleSignUp = async () => {
-    // 必須項目のチェック
+    // 必須項目の入力チェック
     if (!email || !password || !username || !zipCode1) {
-      alert("必須項目をすべて入力してください");
+      alert("必須項目をすべて入力してください。");
+      return;
+    }
+
+    // 日本の郵便番号形式（7桁）のチェック
+    if (zipCode1.length !== 7) {
+      alert("郵便番号は7桁の数字で入力してください。");
       return;
     }
 
     try {
       setLoading(true);
 
-      // 1. Firebase Auth でアカウント作成 (最も重要な認証ステップ)
+      // --- ステップ1: Firebase Auth でユーザー作成 ---
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // 2. Firebase 上のユーザープロフィール（表示名）を更新
+      // --- ステップ2: Firebaseの表示名を更新 ---
       await updateProfile(user, { displayName: username });
 
-      // 3. バックエンド API 呼び出し
-      // 後端の不具合（400エラーなど）で全体の処理が止まらないよう、独自のtry-catchで囲む
-      try {
-        await apiClient.post("/auth/signup", {
-          email: email,
-          password: password
-        });
-      } catch (apiErr: any) {
-        // APIエラーが発生しても、Firebase登録が成功していれば続行する
-        console.warn("バックエンドAPIエラー（デモ用に無視して続行）:", apiErr.response?.data || apiErr.message);
-      }
-
-      // 4. Firebase トークンの取得と保存
+      // --- ステップ3: Firebase IDトークンの取得と保存 ---
       const token = await user.getIdToken();
       localStorage.setItem("token", token);
-      localStorage.setItem("login", "true");
 
-      // 5. 【バックアップ用】後端APIが未対応の項目をローカルストレージに保存
-      // これにより、ダッシュボードですぐに情報を表示できる
+      // --- ステップ4: バックエンドAPIとの同期 ---
+      // バックエンドのUserモデル定義（email, temperature_sensitivity）に合わせます
+      const backendUserData = {
+        email: email,
+        temperature_sensitivity: constitution,
+      };
+
+      console.log("バックエンド送信データ:", backendUserData);
+
+      try {
+        // バックエンドの /auth/signup エンドポイントにPOST
+        await apiClient.post("/auth/signup", backendUserData);
+        console.log("バックエンドDBとの同期成功");
+      } catch (apiErr: any) {
+        // すでにDBにユーザーが存在する場合などのエラーハンドリング
+        console.warn("バックエンド同期警告:", apiErr.response?.data || apiErr.message);
+      }
+
+      // --- ステップ5: ローカルストレージへの保存（ダッシュボード用） ---
+      localStorage.setItem("login", "true");
       localStorage.setItem("userName", username);
       localStorage.setItem("userZip1", zipCode1);
       localStorage.setItem("userZip2", zipCode2);
       localStorage.setItem("constitution", constitution);
 
-      alert("アカウント登録が完了しました！");
-      router.push("/"); // 登録成功後、ダッシュボードへ遷移
+      alert("登録が完了しました！");
+      router.push("/"); // トップページ（ダッシュボード）へ移動
 
     } catch (error: any) {
       console.error("SignUp Error:", error.message);
       
-      // Firebase の主要なエラーメッセージを日本語化
+      // Firebaseエラーの日本語化
       if (error.message.includes("email-already-in-use")) {
-        alert("このメールアドレスは既に登録されています。別のメールアドレスを試すかログインしてください。");
+        alert("このメールアドレスは既に登録されています。");
       } else if (error.message.includes("weak-password")) {
-        alert("パスワードが短すぎます。6文字以上で設定してください。");
+        alert("パスワードは6文字以上で入力してください。");
       } else {
         alert("登録中にエラーが発生しました。入力内容を確認してください。");
       }
@@ -89,19 +112,23 @@ export default function SignUpPage() {
     <main className="min-h-screen flex items-center justify-center bg-gradient-to-b from-sky-100 to-pink-100 font-japanese">
       <div className="w-[360px] h-[640px] bg-white rounded-[40px] shadow-xl p-6 flex flex-col justify-center space-y-5">
         
+        {/* ヘッダー部分 */}
         <div className="text-center space-y-1">
           <h1 className="text-2xl font-bold text-gray-800">Climo ☁️</h1>
-          <p className="text-sm text-gray-500">新規アカウント作成</p>
+          <p className="text-sm text-gray-500">新規登録</p>
         </div>
 
+        {/* 入力フォーム */}
         <div className="space-y-3">
+          {/* ニックネーム */}
           <input
             type="text"
-            placeholder="表示名"
+            placeholder="ニックネーム"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             className="w-full p-3 rounded-xl bg-gray-100 focus:outline-none focus:ring-2 focus:ring-sky-300 text-sm"
           />
+          {/* メールアドレス */}
           <input
             type="email"
             placeholder="メールアドレス"
@@ -109,20 +136,23 @@ export default function SignUpPage() {
             onChange={(e) => setEmail(e.target.value)}
             className="w-full p-3 rounded-xl bg-gray-100 focus:outline-none focus:ring-2 focus:ring-sky-300 text-sm"
           />
+          {/* パスワード */}
           <input
             type="password"
-            placeholder="パスワード (6文字以上)"
+            placeholder="パスワード（6文字以上）"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full p-3 rounded-xl bg-gray-100 focus:outline-none focus:ring-2 focus:ring-pink-300 text-sm"
           />
 
+          {/* 体質選択（暑がり・寒がり） */}
           <div className="space-y-1 text-left">
-            <p className="text-[10px] text-gray-400 ml-2">体質</p>
+            <p className="text-[10px] text-gray-400 ml-2">体質について</p>
             <div className="flex gap-2">
-              {['hot', 'normal', 'cold'].map((type) => (
+              {(['hot', 'normal', 'cold'] as const).map((type) => (
                 <button
                   key={type}
+                  type="button"
                   onClick={() => setConstitution(type)}
                   className={`flex-1 py-2 rounded-xl text-[10px] border transition ${
                     constitution === type ? "bg-sky-400 text-white border-sky-400 shadow-sm" : "bg-gray-50 text-gray-400 border-gray-100"
@@ -134,13 +164,14 @@ export default function SignUpPage() {
             </div>
           </div>
 
+          {/* 郵便番号入力 */}
           <div className="space-y-1 text-left">
-            <p className="text-[10px] text-gray-400 ml-2">郵便番号（7桁数字・地点1は必須）</p>
+            <p className="text-[10px] text-gray-400 ml-2">郵便番号（地点1は必須）</p>
             <div className="flex gap-2">
               <input
                 type="text"
                 inputMode="numeric"
-                placeholder="地点1"
+                placeholder="7桁の数字"
                 value={zipCode1}
                 onChange={(e) => handleZipChange(e.target.value, setZipCode1)}
                 className="w-1/2 p-3 rounded-xl bg-gray-100 focus:outline-none focus:ring-2 focus:ring-sky-300 text-sm text-center"
@@ -148,7 +179,7 @@ export default function SignUpPage() {
               <input
                 type="text"
                 inputMode="numeric"
-                placeholder="地点2"
+                placeholder="地点2（任意）"
                 value={zipCode2}
                 onChange={(e) => handleZipChange(e.target.value, setZipCode2)}
                 className="w-1/2 p-3 rounded-xl bg-gray-100 focus:outline-none focus:ring-2 focus:ring-sky-300 text-sm text-center"
@@ -157,16 +188,17 @@ export default function SignUpPage() {
           </div>
         </div>
 
+        {/* ボタン部分 */}
         <div className="space-y-3 pt-2">
           <button
             onClick={handleSignUp}
             disabled={loading}
             className="w-full py-3 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-sky-400 to-pink-400 shadow-md active:scale-95 disabled:opacity-50 transition"
           >
-            {loading ? "登録中..." : "登録して始める"}
+            {loading ? "登録中..." : "アカウントを作成する"}
           </button>
           <button onClick={() => router.push("/login")} className="w-full text-xs text-gray-400 text-center hover:text-sky-500">
-            戻る
+            ログイン画面に戻る
           </button>
         </div>
       </div>
