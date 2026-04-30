@@ -54,6 +54,10 @@ export default function SignUpPage() {
       return;
     }
 
+    // Firebase ユーザーが作成されたかを追跡するフラグ
+    let userCreated = false;
+    let registrationSucceeded = false;
+
     try {
       setLoading(true);
 
@@ -64,6 +68,7 @@ export default function SignUpPage() {
         password,
       );
       const user = userCredential.user;
+      userCreated = true;
 
       // --- ステップ2: Firebaseの表示名を更新 ---
       await updateProfile(user, { displayName: username });
@@ -82,13 +87,8 @@ export default function SignUpPage() {
         zip_code_2: zipCode2 || null,
       });
 
-      // --- ステップ5: signup直後は自動ログイン扱いにせず、明示ログインへ誘導 ---
-      await signOut(auth);
-      localStorage.removeItem("token");
-      localStorage.removeItem("login");
-
+      registrationSucceeded = true;
       alert("登録が完了しました。ログインしてください。");
-      router.push("/login");
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -103,7 +103,20 @@ export default function SignUpPage() {
         alert("登録中にエラーが発生しました。入力内容を確認してください。");
       }
     } finally {
+      // --- クリーンアップ: Firebase ユーザーが作成された場合は必ずサインアウトし、
+      // localStorage を全クリアして「ログイン済み状態」が残らないようにする ---
+      if (userCreated) {
+        try {
+          await signOut(auth);
+        } catch {
+          // signOut 失敗は無視（クリーンアップを続行）
+        }
+        localStorage.clear();
+      }
       setLoading(false);
+      if (registrationSucceeded) {
+        router.push("/login");
+      }
     }
   };
 
