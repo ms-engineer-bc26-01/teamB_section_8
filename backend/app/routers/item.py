@@ -1,3 +1,4 @@
+import logging
 import os
 import uuid as uuid_lib
 from uuid import UUID
@@ -16,6 +17,7 @@ ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
 router = APIRouter(prefix="/items", tags=["items"])
+logger = logging.getLogger(__name__)
 
 
 @router.post("", response_model=ItemResponse)
@@ -200,11 +202,18 @@ def delete_item_image(
     if not item.image_url:
         raise HTTPException(status_code=404, detail="Image not found")
 
-    file_path = os.path.join(UPLOAD_DIR, item.image_url)
-    if os.path.isfile(file_path):
-        os.remove(file_path)
+    image_filename = item.image_url
 
+    # DBを先に更新してからファイルを削除（DB失敗時の不整合を防ぐ）
     item_service.update_item(db, item_id, image_url=None)
+
+    file_path = os.path.join(UPLOAD_DIR, image_filename)
+    try:
+        if os.path.isfile(file_path):
+            os.remove(file_path)
+    except OSError:
+        logger.error("Failed to delete image file: %s", file_path)
+
     return {"message": "Image deleted"}
 
 
@@ -221,11 +230,17 @@ def delete_item(
     if item.user_id != uid_to_uuid(user["uid"]):
         raise HTTPException(status_code=403, detail="Forbidden")
 
-    # 画像ファイルも合わせて削除
-    if item.image_url:
-        file_path = os.path.join(UPLOAD_DIR, item.image_url)
-        if os.path.isfile(file_path):
-            os.remove(file_path)
+    # 画像ファイルも合わせて削除（DBを先に削除してからファイルを削除）
+    image_filename = item.image_url
 
     item_service.delete_item(db, item_id)
+
+    if image_filename:
+        file_path = os.path.join(UPLOAD_DIR, image_filename)
+        try:
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+        except OSError:
+            logger.error("Failed to delete image file: %s", file_path)
+
     return {"message": "Item deleted"}
