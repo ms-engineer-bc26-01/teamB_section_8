@@ -65,15 +65,26 @@ async def create_item(
         image_url = filename
 
     user_id = uid_to_uuid(user["uid"])
-    created_item = item_service.create_item(
-        db,
-        user_id=user_id,
-        name=name,
-        category=category,
-        color=color,
-        season=season,
-        image_url=image_url
-    )
+    try:
+        created_item = item_service.create_item(
+            db,
+            user_id=user_id,
+            name=name,
+            category=category,
+            color=color,
+            season=season,
+            image_url=image_url
+        )
+    except Exception:
+        # DBコミット失敗時は書き込み済みファイルを削除して孤立ファイルを防ぐ
+        if image_url:
+            orphan_path = os.path.join(UPLOAD_DIR, image_url)
+            try:
+                if os.path.exists(orphan_path):
+                    os.remove(orphan_path)
+            except OSError:
+                logger.error("Failed to clean up orphaned file: %s", orphan_path)
+        raise
     return created_item
 
 
@@ -170,12 +181,10 @@ async def update_item_image(
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail="Image size exceeds 10MB limit")
 
-    # 古い画像ファイルを削除
-    if item.image_url:
-        old_path = os.path.join(UPLOAD_DIR, item.image_url)
-        if os.path.isfile(old_path):
-            os.remove(old_path)
+    # 旧ファイル名を保存（後で削除するため）
+    old_filename = item.image_url
 
+    # 新ファイルを先に保存
     ext = image.content_type.split("/")[-1]
     filename = f"{uuid_lib.uuid4()}.{ext}"
     os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -183,7 +192,27 @@ async def update_item_image(
     with open(file_path, "wb") as f:
         f.write(content)
 
-    updated_item = item_service.update_item(db, item_id, image_url=filename)
+    # DB更新
+    try:
+        updated_item = item_service.update_item(db, item_id, image_url=filename)
+    except Exception:
+        # DB更新失敗時は書き込んだ新ファイルを削除してロールバック
+        try:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        except OSError:
+            logger.error("Failed to clean up new image file after DB error: %s", file_path)
+        raise
+
+    # DB更新成功後に旧ファイルを削除
+    if old_filename:
+        old_path = os.path.join(UPLOAD_DIR, old_filename)
+        try:
+            if os.path.isfile(old_path):
+                os.remove(old_path)
+        except OSError:
+            logger.error("Failed to delete old image file: %s", old_path)
+
     return updated_item
 
 
