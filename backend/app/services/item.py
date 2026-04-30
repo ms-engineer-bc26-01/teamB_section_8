@@ -36,7 +36,7 @@ def update_item(db: Session, item_id: UUID, **kwargs) -> Item | None:
         return None
     
     for key, value in kwargs.items():
-        if value is not None and hasattr(item, key):
+        if (value is not None or key == "image_url") and hasattr(item, key):
             setattr(item, key, value)
     
     db.commit()
